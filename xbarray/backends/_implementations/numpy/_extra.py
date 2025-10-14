@@ -68,7 +68,7 @@ def dtype_is_boolean(
 ) -> bool:
     return dtype == np.bool_ or dtype == bool
 
-from .._common.implementations import get_abbreviate_array_function, get_map_fn_over_arrays_function
+from .._common.implementations import *
 from array_api_compat import numpy as compat_module
 abbreviate_array = get_abbreviate_array_function(
     backend=compat_module,
@@ -80,4 +80,8 @@ abbreviate_array = get_abbreviate_array_function(
 
 map_fn_over_arrays = get_map_fn_over_arrays_function(
     is_backendarray=is_backendarray,
+)
+
+pad_dim = get_pad_dim_function(
+    backend=compat_module,
 )

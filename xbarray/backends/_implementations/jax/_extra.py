@@ -96,3 +96,6 @@ def map_fn_over_arrays(
         func,
         data
     )
+pad_dim = get_pad_dim_function(
+    backend=compat_module,
+)

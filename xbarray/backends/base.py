@@ -189,7 +189,7 @@ class ComputeBackend(ArrayAPINamespace[BArrayType, BDeviceType, BDtypeType], Pro
         Abbreviates an array to a single element if possible.
         Or, if some dimensions are the same, abbreviates to a smaller array (but with the same number of dimensions).
         """
-        pass
+        raise NotImplementedError
     
     @abc.abstractmethod
     def map_fn_over_arrays(self, data : Any, func : Callable[[BArrayType], BArrayType]) -> Any:
@@ -197,3 +197,13 @@ class ComputeBackend(ArrayAPINamespace[BArrayType, BDeviceType, BDtypeType], Pro
         Map a function over arrays in a data structure and produce a new data structure with the same shape.
         This is useful for applying a function to all arrays in a nested structure.
         """
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def pad_dim(self, x : BArrayType, dim : int, target_size : int, value : Union[float, int] = 0) -> BArrayType:
+        """
+        Pad a dimension of an array to a target size with a given value.
+        If the dimension is already the target size, return the original array.
+        If the dimension is larger than the target size, raise an error.
+        """
+        raise NotImplementedError
