@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 from xbarray.backends.base import ComputeBackend, BArrayType, BDeviceType, BDtypeType, BRNGType
 
 __all__ = [
@@ -6,10 +6,12 @@ __all__ = [
     "depth_image_to_world",
     "world_to_pixel_coordinate_and_depth",
     "world_to_depth",
+    "farthest_point_sampling",
+    "random_point_sampling"
 ]
 
 def pixel_coordinate_and_depth_to_world(
-    backend : ComputeBackend,
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
     pixel_coordinates : BArrayType, 
     depth : BArrayType,
     intrinsic_matrix : BArrayType,
@@ -54,7 +56,7 @@ def pixel_coordinate_and_depth_to_world(
     ], dim=-1) # (..., N, 4)
 
 def depth_image_to_world(
-    backend : ComputeBackend,
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
     depth_image : BArrayType,
     intrinsic_matrix : BArrayType,
     extrinsic_matrix : BArrayType
@@ -88,7 +90,7 @@ def depth_image_to_world(
     return world_coords
 
 def world_to_pixel_coordinate_and_depth(
-    backend : ComputeBackend,
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
     world_coords : BArrayType,
     intrinsic_matrix : BArrayType,
     extrinsic_matrix : Optional[BArrayType] = None
@@ -144,7 +146,7 @@ def world_to_pixel_coordinate_and_depth(
 
 
 def world_to_depth(
-    backend : ComputeBackend,
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
     world_coords : BArrayType,
     extrinsic_matrix : Optional[BArrayType] = None
 ) -> BArrayType:
@@ -183,3 +185,134 @@ def world_to_depth(
     depth = backend.where(depth_valid, depth, 0)
     return depth
 
+def farthest_point_sampling(
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
+    points : BArrayType,
+    num_samples : int,
+    rng : BRNGType,
+    points_valid : Optional[BArrayType] = None
+) -> Tuple[BRNGType, BArrayType, Optional[BArrayType]]:
+    """
+    Perform farthest point sampling on a set of points.
+    Args:
+        backend (ComputeBackend): The compute backend to use.
+        points (BArrayType): The input points of shape (..., N, D).
+        num_samples (int): The number of points to sample.
+        rng (BRNGType): The random number generator.
+        points_valid (Optional[BArrayType]): A boolean mask of shape (..., N) indicating valid points. If None, all points are considered valid.
+    Returns:
+        BArrayType: The indices of the sampled points of shape (..., num_samples).
+        Optional[BArrayType]: The valid mask of shape (..., num_samples). Returned only if points_valid is provided.
+    """
+    assert 0 < num_samples <= points.shape[-2], "num_samples must be in (0, N]"
+    device = backend.device(points)
+
+    flat_points = backend.reshape(points, [-1, *points.shape[-2:]])  # (B, N, D)
+    B, N, D = flat_points.shape
+    flat_points_valid = None if points_valid is None else backend.reshape(points_valid, [-1, N])  # (B, N)
+    
+    batch_indices = backend.arange(B, dtype=backend.default_integer_dtype, device=device)
+
+    centroids_idx = backend.zeros((B, num_samples), dtype=backend.default_integer_dtype, device=device)  # sampled point indices
+    centroids_valid = None if flat_points_valid is None else backend.zeros((B, num_samples), dtype=backend.default_boolean_dtype, device=device)  # valid mask of sampled points
+
+    distance = backend.full((B, N), backend.inf, device=device)  # distance of each point to its nearest centroid
+    if flat_points_valid is not None:
+        distance = backend.where(
+            flat_points_valid,
+            distance,
+            -backend.inf
+        )
+
+    if flat_points_valid is not None:
+        farthest_idx = backend.argmax(
+            flat_points_valid,
+            axis=1
+        )
+    else:
+        rng, farthest_idx = backend.random.random_discrete_uniform(
+            (B,),
+            0, N, 
+            rng=rng,
+            dtype=backend.default_integer_dtype, 
+            device=device
+        )  # initial random farthest point
+    centroids_idx[:, 0] = farthest_idx
+    if centroids_valid is not None and flat_points_valid is not None:
+        centroids_valid[:, 0] = flat_points_valid[batch_indices, farthest_idx]
+    
+    for i in range(1, num_samples):
+        last_centroid = flat_points[batch_indices, farthest_idx][:, None, :]  # (B, 1, D)
+        perpoint_dist_to_last_centroid = backend.sum((flat_points - last_centroid) ** 2, dim=-1)  # (B, N)
+        distance = backend.minimum(
+            distance,
+            perpoint_dist_to_last_centroid
+        )  # (B, N)
+        farthest_idx = backend.argmax(distance, axis=1) # (B,)
+        centroids_idx[:, i] = farthest_idx
+        if centroids_valid is not None and flat_points_valid is not None:
+            centroids_valid[:, i] = flat_points_valid[batch_indices, farthest_idx]
+    
+    unflat_centroids_idx = backend.reshape(centroids_idx, points.shape[:-2] + [num_samples])  # (..., num_samples)
+    unflat_centroids_valid = None if centroids_valid is None else backend.reshape(centroids_valid, points.shape[:-2] + [num_samples])  # (..., num_samples)
+    return rng, unflat_centroids_idx, unflat_centroids_valid
+
+def random_point_sampling(
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
+    points : BArrayType,
+    num_samples : int,
+    rng : BRNGType,
+    points_valid : Optional[BArrayType] = None
+) -> Tuple[BRNGType, BArrayType, Optional[BArrayType]]:
+    """
+    Perform random point sampling on a set of points.
+    Args:
+        backend (ComputeBackend): The compute backend to use.
+        points (BArrayType): The input points of shape (..., N, D).
+        num_samples (int): The number of points to sample.
+        rng (BRNGType): The random number generator.
+        points_valid (Optional[BArrayType]): A boolean mask of shape (..., N) indicating valid points. If None, all points are considered valid.
+    Returns:
+        BArrayType: The indices of the sampled points of shape (..., num_samples).
+        Optional[BArrayType]: The valid mask of shape (..., num_samples). Returned only if points_valid is provided.
+    """
+    assert 0 < num_samples <= points.shape[-2], "num_samples must be in (0, N]"
+    device = backend.device(points)
+
+    flat_points = backend.reshape(points, [-1, *points.shape[-2:]])  # (B, N, D)
+    B, N, D = flat_points.shape
+    flat_points_valid = None if points_valid is None else backend.reshape(points_valid, [-1, N])  # (B, N)
+    
+    if flat_points_valid is None:
+        sampled_idx = backend.empty((B, num_samples), dtype=backend.default_integer_dtype, device=device)
+        for b in range(B):
+            rng, idx_b = backend.random.random_permutation(
+                N,
+                rng=rng,
+                device=device
+            )
+            sampled_idx[b] = idx_b[:num_samples]
+        unflat_sampled_idx = backend.reshape(sampled_idx, points.shape[:-2] + [num_samples])
+        return rng, unflat_sampled_idx, None
+    else:
+        valid_counts = backend.sum(
+            backend.astype(flat_points_valid, backend.default_integer_dtype),
+            axis=1
+        )  # (B,)
+        assert bool(backend.all(valid_counts >= num_samples)), "Not enough valid points to sample from."
+        sampled_idx = backend.empty((B, num_samples), dtype=backend.default_integer_dtype, device=device)
+        sampled_valid = backend.zeros((B, num_samples), dtype=backend.default_boolean_dtype, device=device)
+        for b in range(B):
+            valid_indices_b = backend.nonzero(flat_points_valid[b])[0] # (valid_count_b,)
+            rng, permuted_valid_indices_b = backend.random.random_permutation(
+                valid_indices_b.shape[0],
+                rng=rng,
+                device=device
+            )
+            sampled_idx_b = valid_indices_b[permuted_valid_indices_b[:num_samples]]  # (num_samples,)
+            sampled_idx[b, :sampled_idx_b.shape[0]] = sampled_idx_b
+            sampled_valid[b, :sampled_idx_b.shape[0]] = True
+            sampled_valid[b, sampled_idx_b.shape[0]:] = False
+        unflat_sampled_idx = backend.reshape(sampled_idx, points.shape[:-2] + [num_samples])
+        unflat_sampled_valid = backend.reshape(sampled_valid, points.shape[:-2] + [num_samples])
+        return rng, unflat_sampled_idx, unflat_sampled_valid
