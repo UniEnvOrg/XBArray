@@ -82,11 +82,11 @@ def depth_image_to_world(
     world_coords = pixel_coordinate_and_depth_to_world(
         backend,
         pixel_coordinates,
-        depth_image.reshape(depth_image.shape[:-2] + [H * W]), # (..., H * W)
+        backend.reshape(depth_image, list(depth_image.shape[:-2]) + [H * W]), # (..., H * W)
         intrinsic_matrix,
         extrinsic_matrix
     ) # (..., H * W, 4)
-    world_coords = backend.reshape(world_coords, depth_image.shape[:-2] + [H, W, 4]) # (..., H, W, 4)
+    world_coords = backend.reshape(world_coords, list(depth_image.shape[:-2]) + [H, W, 4]) # (..., H, W, 4)
     return world_coords
 
 def world_to_pixel_coordinate_and_depth(
@@ -226,7 +226,7 @@ def farthest_point_sampling(
 
     if flat_points_valid is not None:
         farthest_idx = backend.argmax(
-            flat_points_valid,
+            backend.astype(flat_points_valid, backend.default_integer_dtype),
             axis=1
         )
     else:
@@ -253,8 +253,8 @@ def farthest_point_sampling(
         if centroids_valid is not None and flat_points_valid is not None:
             centroids_valid[:, i] = flat_points_valid[batch_indices, farthest_idx]
     
-    unflat_centroids_idx = backend.reshape(centroids_idx, points.shape[:-2] + [num_samples])  # (..., num_samples)
-    unflat_centroids_valid = None if centroids_valid is None else backend.reshape(centroids_valid, points.shape[:-2] + [num_samples])  # (..., num_samples)
+    unflat_centroids_idx = backend.reshape(centroids_idx, list(points.shape[:-2]) + [num_samples])  # (..., num_samples)
+    unflat_centroids_valid = None if centroids_valid is None else backend.reshape(centroids_valid, list(points.shape[:-2]) + [num_samples])  # (..., num_samples)
     return rng, unflat_centroids_idx, unflat_centroids_valid
 
 def random_point_sampling(
@@ -292,7 +292,7 @@ def random_point_sampling(
                 device=device
             )
             sampled_idx[b] = idx_b[:num_samples]
-        unflat_sampled_idx = backend.reshape(sampled_idx, points.shape[:-2] + [num_samples])
+        unflat_sampled_idx = backend.reshape(sampled_idx, list(points.shape[:-2]) + [num_samples])
         return rng, unflat_sampled_idx, None
     else:
         valid_counts = backend.sum(
@@ -313,6 +313,6 @@ def random_point_sampling(
             sampled_idx[b, :sampled_idx_b.shape[0]] = sampled_idx_b
             sampled_valid[b, :sampled_idx_b.shape[0]] = True
             sampled_valid[b, sampled_idx_b.shape[0]:] = False
-        unflat_sampled_idx = backend.reshape(sampled_idx, points.shape[:-2] + [num_samples])
-        unflat_sampled_valid = backend.reshape(sampled_valid, points.shape[:-2] + [num_samples])
+        unflat_sampled_idx = backend.reshape(sampled_idx, list(points.shape[:-2]) + [num_samples])
+        unflat_sampled_valid = backend.reshape(sampled_valid, list(points.shape[:-2]) + [num_samples])
         return rng, unflat_sampled_idx, unflat_sampled_valid
