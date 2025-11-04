@@ -110,7 +110,8 @@ def world_to_pixel_coordinate_and_depth(
         world_coords_h = backend.pad_dim(
             world_coords,
             dim=-1,
-            value=0
+            target_size=4,
+            value=1
         )
     else:
         assert world_coords.shape[-1] == 4

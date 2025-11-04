@@ -26,6 +26,7 @@ __all__ = [
     "dtype_is_boolean",
     "abbreviate_array",
     "map_fn_over_arrays",
+    "pad_dim",
 ]
 
 default_integer_dtype = torch.int32

@@ -80,8 +80,8 @@ def get_pad_dim_function(
             raise ValueError(f"Cannot pad dimension {dim} of size {size_at_target} to smaller target size {target_size}")
         if size_at_target == target_size:
             return x
-        target_size = list(x.shape)
-        target_size[dim] = target_size - size_at_target
-        pad_value = backend.full(target_size, value, dtype=x.dtype, device=array_api_compat.device(x))
+        target_shape = list(x.shape)
+        target_shape[dim] = target_size - size_at_target
+        pad_value = backend.full(target_shape, value, dtype=x.dtype, device=array_api_compat.device(x))
         return backend.concat([x, pad_value], axis=dim)
     return pad_dim
