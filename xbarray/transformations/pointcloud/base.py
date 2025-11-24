@@ -2,6 +2,8 @@ from typing import Optional, Tuple
 from xbarray.backends.base import ComputeBackend, BArrayType, BDeviceType, BDtypeType, BRNGType
 
 __all__ = [
+    "gather_pixel_value",
+    "bilinear_interpolate",
     "pixel_coordinate_and_depth_to_world",
     "depth_image_to_world",
     "world_to_pixel_coordinate_and_depth",
@@ -9,6 +11,124 @@ __all__ = [
     "farthest_point_sampling",
     "random_point_sampling"
 ]
+
+def gather_pixel_value(
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
+    values : BArrayType,
+    pixel_coordinates : BArrayType
+) -> BArrayType:
+    """
+    Gather pixel values at given pixel coordinates.
+    Args:
+        backend (ComputeBackend): The compute backend to use.
+        values (BArrayType): The input values of shape (..., H, W, C).
+        pixel_coordinates (BArrayType): The pixel coordinates of shape (..., N, 2) in (x, y) order.
+    Returns:
+        BArrayType: The gathered values of shape (..., N, C).
+    """
+    assert backend.dtype_is_real_integer(pixel_coordinates.dtype), "pixel_coordinates must be of integer type."
+    flat_values = backend.reshape(values, (*values.shape[:-3], -1, values.shape[-1]))  # (..., H * W, C)
+    H, W = values.shape[-3], values.shape[-2]
+    pixel_coordinates_x = pixel_coordinates[..., 0]  # (..., N)
+    pixel_coordinates_y = pixel_coordinates[..., 1]  # (..., N)
+    pixel_coordinates_x = backend.clip(pixel_coordinates_x, 0, W - 1)
+    pixel_coordinates_y = backend.clip(pixel_coordinates_y, 0, H - 1)
+    flat_indices = pixel_coordinates_y * W + pixel_coordinates_x  # (..., N)
+    gathered_values = backend.take_along_axis(
+        flat_values, 
+        flat_indices[..., None], 
+        axis=-2
+    )  # (..., N, C)
+    return gathered_values
+
+def bilinear_interpolate(
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
+    values : BArrayType,
+    pixel_coordinates : BArrayType,
+    uniform_weights : bool = False
+) -> BArrayType:
+    """
+    Obtain bilinearly interpolated values at given pixel coordinates.
+    Args:
+        backend (ComputeBackend): The compute backend to use.
+        values (BArrayType): The input values of shape (..., H, W, C).
+        pixel_coordinates (BArrayType): The pixel coordinates of shape (..., N, 2) in (x, y) order.
+    Returns:
+        BArrayType: The interpolated values of shape (..., N, C).
+    """
+    H, W = values.shape[-3], values.shape[-2]
+    x = pixel_coordinates[..., 0]  # (..., N)
+    y = pixel_coordinates[..., 1]  # (..., N)
+
+    x = backend.clip(x, 0, W - 1)
+    y = backend.clip(y, 0, H - 1)
+    x0 = backend.astype(backend.floor(x), backend.default_integer_dtype)
+    x1 = backend.minimum(x0 + 1, W - 1)
+    y0 = backend.astype(backend.floor(y), backend.default_integer_dtype)
+    y1 = backend.minimum(y0 + 1, H - 1)
+    
+    pc00 = backend.stack([x0, y0], dim=-1)  # (..., N, 2)
+    pc01 = backend.stack([x0, y1], dim=-1)  # (..., N, 2)
+    pc10 = backend.stack([x1, y0], dim=-1)  # (..., N, 2)
+    pc11 = backend.stack([x1, y1], dim=-1)  # (..., N, 2)
+    all_queries = backend.concat([pc00, pc01, pc10, pc11], dim=-2)  # (..., 4 * N, 2)
+    gathered_values = gather_pixel_value(
+        backend,
+        values,
+        all_queries
+    )  # (..., 4 * N, C)
+    values_00 = gathered_values[..., :gathered_values.shape[-2] // 4, :]  # (..., N, C)
+    values_01 = gathered_values[..., gathered_values.shape[-2] // 4:2 * gathered_values.shape[-2] // 4, :]  # (..., N, C)
+    values_10 = gathered_values[..., 2 * gathered_values.shape[-2] // 4:3 * gathered_values.shape[-2] // 4, :]  # (..., N, C)
+    values_11 = gathered_values[..., 3 * gathered_values.shape[-2] // 4:, :]  # (..., N, C)
+    
+    weight_00 = backend.all(backend.logical_not(backend.isnan(values_00)), axis=-1)  # (..., N)
+    weight_01 = backend.all(backend.logical_not(backend.isnan(values_01)), axis=-1)  # (..., N)
+    weight_10 = backend.all(backend.logical_not(backend.isnan(values_10)), axis=-1)  # (..., N)
+    weight_11 = backend.all(backend.logical_not(backend.isnan(values_11)), axis=-1)  # (..., N)
+    values_00 = backend.where(
+        weight_00[..., None],
+        values_00,
+        0
+    )  # (..., N, C)
+    values_01 = backend.where(
+        weight_01[..., None],
+        values_01,
+        0
+    )  # (..., N, C)
+    values_10 = backend.where(
+        weight_10[..., None],
+        values_10,
+        0
+    )  # (..., N, C)
+    values_11 = backend.where(
+        weight_11[..., None],
+        values_11,
+        0
+    )  # (..., N, C)
+    weight_00 = backend.astype(weight_00, values.dtype)  # (..., N)
+    weight_01 = backend.astype(weight_01, values.dtype)  # (..., N)
+    weight_10 = backend.astype(weight_10, values.dtype)  # (..., N)
+    weight_11 = backend.astype(weight_11, values.dtype)  # (..., N)
+
+    if not uniform_weights:
+        weight_00 *= (x1 - x) * (y1 - y)
+        weight_01 *= (x1 - x) * (y - y0)
+        weight_10 *= (x - x0) * (y1 - y)
+        weight_11 *= (x - x0) * (y - y0)
+    weights_sum = weight_00 + weight_01 + weight_10 + weight_11  # (..., N)
+    weights_sum = backend.clip(weights_sum, min=1e-6)
+    weight_00 /= weights_sum
+    weight_01 /= weights_sum
+    weight_10 /= weights_sum
+    weight_11 /= weights_sum
+    interpolated_values = (
+        values_00 * weight_00[..., None] +
+        values_01 * weight_01[..., None] +
+        values_10 * weight_10[..., None] +
+        values_11 * weight_11[..., None]
+    )  # (..., N, C)
+    return interpolated_values
 
 def pixel_coordinate_and_depth_to_world(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
