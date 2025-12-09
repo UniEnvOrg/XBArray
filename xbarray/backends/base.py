@@ -1,4 +1,4 @@
-from typing import Optional, Generic, TypeVar, Dict, Union, Any, Sequence, SupportsFloat, Tuple, Type, Callable, Mapping, Protocol
+from typing import Optional, Generic, TypeVar, Dict, Union, Any, Sequence, SupportsFloat, Tuple, Type, Callable, Mapping, Protocol, Literal
 import abc
 from array_api_typing.typing_extra import *
 import numpy as np
@@ -118,7 +118,7 @@ class RNGBackend(Protocol[BArrayType, BDeviceType, BDtypeType, BRNGType]):
         raise NotImplementedError
 
 class ComputeBackend(ArrayAPINamespace[BArrayType, BDeviceType, BDtypeType], Protocol[BArrayType, BDeviceType, BDtypeType, BRNGType]):
-    simplified_name : str
+    simplified_name : Literal['numpy', 'jax', 'pytorch']
     ARRAY_TYPE : Type[BArrayType]
     DEVICE_TYPE : Type[BDeviceType]
     DTYPE_TYPE : Type[BDtypeType]
