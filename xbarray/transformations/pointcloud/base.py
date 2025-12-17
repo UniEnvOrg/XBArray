@@ -67,11 +67,11 @@ def bilinear_interpolate(
     y0 = backend.astype(backend.floor(y), backend.default_integer_dtype)
     y1 = backend.minimum(y0 + 1, H - 1)
     
-    pc00 = backend.stack([x0, y0], dim=-1)  # (..., N, 2)
-    pc01 = backend.stack([x0, y1], dim=-1)  # (..., N, 2)
-    pc10 = backend.stack([x1, y0], dim=-1)  # (..., N, 2)
-    pc11 = backend.stack([x1, y1], dim=-1)  # (..., N, 2)
-    all_queries = backend.concat([pc00, pc01, pc10, pc11], dim=-2)  # (..., 4 * N, 2)
+    pc00 = backend.stack([x0, y0], axis=-1)  # (..., N, 2)
+    pc01 = backend.stack([x0, y1], axis=-1)  # (..., N, 2)
+    pc10 = backend.stack([x1, y0], axis=-1)  # (..., N, 2)
+    pc11 = backend.stack([x1, y1], axis=-1)  # (..., N, 2)
+    all_queries = backend.concat([pc00, pc01, pc10, pc11], axis=-2)  # (..., 4 * N, 2)
     gathered_values = gather_pixel_value(
         backend,
         values,
@@ -157,7 +157,7 @@ def pixel_coordinate_and_depth_to_world(
         xs_norm,
         ys_norm,
         backend.ones_like(depth)
-    ], dim=-1) # (..., N, 3)
+    ], axis=-1) # (..., N, 3)
     camera_coords *= depth[..., None]  # (..., N, 3)
 
     R = extrinsic_matrix[..., :3, :3]  # (..., 3, 3)
@@ -173,7 +173,7 @@ def pixel_coordinate_and_depth_to_world(
     return backend.concat([
         world_coords,
         valid_depth_mask[..., None]
-    ], dim=-1) # (..., N, 4)
+    ], axis=-1) # (..., N, 4)
 
 def depth_image_to_world(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
@@ -192,12 +192,14 @@ def depth_image_to_world(
         BArrayType: The world coordinates of shape (..., H, W, 4). The last dimension is (x, y, z, valid_mask).
     """
     H, W = depth_image.shape[-2:]
-    ys, xs = backend.meshgrid(
-        backend.arange(H, device=backend.device(depth_image), dtype=depth_image.dtype),
+    xs, ys = backend.meshgrid(
         backend.arange(W, device=backend.device(depth_image), dtype=depth_image.dtype),
-        indexing='ij'
+        backend.arange(H, device=backend.device(depth_image), dtype=depth_image.dtype),
+        indexing="xy"
     ) # (H, W), (H, W)
-    pixel_coordinates = backend.stack([xs, ys], dim=-1) # (H, W, 2)
+    assert xs.shape == (H, W) and ys.shape == (H, W)
+
+    pixel_coordinates = backend.stack([xs, ys], axis=-1) # (H, W, 2)
     pixel_coordinates = backend.reshape(pixel_coordinates, [1] * (len(depth_image.shape) - 2) + [H * W, 2]) # (..., H * W, 2)
     world_coords = pixel_coordinate_and_depth_to_world(
         backend,
@@ -364,7 +366,7 @@ def farthest_point_sampling(
     
     for i in range(1, num_samples):
         last_centroid = flat_points[batch_indices, farthest_idx][:, None, :]  # (B, 1, D)
-        perpoint_dist_to_last_centroid = backend.sum((flat_points - last_centroid) ** 2, dim=-1)  # (B, N)
+        perpoint_dist_to_last_centroid = backend.sum((flat_points - last_centroid) ** 2, axis=-1)  # (B, N)
         distance = backend.minimum(
             distance,
             perpoint_dist_to_last_centroid
