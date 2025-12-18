@@ -59,7 +59,7 @@ def get_map_fn_over_arrays_function(
                 return type(data)(**ret)  # try to keep the same mapping type
             except:
                 return ret
-        elif isinstance(data, Sequence):
+        elif isinstance(data, Sequence) and not isinstance(data, (str, bytes)):
             ret = [map_fn_over_arrays(i, func) for i in data]
             try:
                 return type(data)(ret)  # try to keep the same sequence type
