@@ -418,12 +418,12 @@ def random_point_sampling(
         unflat_sampled_idx = backend.reshape(sampled_idx, list(points.shape[:-2]) + [num_samples])
         return rng, unflat_sampled_idx, None
     else:
-        valid_counts = backend.sum(
-            backend.astype(flat_points_valid, backend.default_integer_dtype),
-            axis=1
-        )  # (B,)
-        assert bool(backend.all(valid_counts >= num_samples)), "Not enough valid points to sample from."
-        sampled_idx = backend.empty((B, num_samples), dtype=backend.default_integer_dtype, device=device)
+        # valid_counts = backend.sum(
+        #     backend.astype(flat_points_valid, backend.default_integer_dtype),
+        #     axis=1
+        # )  # (B,)
+        # assert bool(backend.all(valid_counts >= num_samples)), "Not enough valid points to sample from."
+        sampled_idx = backend.zeros((B, num_samples), dtype=backend.default_integer_dtype, device=device)
         sampled_valid = backend.zeros((B, num_samples), dtype=backend.default_boolean_dtype, device=device)
         for b in range(B):
             valid_indices_b = backend.nonzero(flat_points_valid[b])[0] # (valid_count_b,)
