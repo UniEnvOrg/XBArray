@@ -28,8 +28,24 @@ class Behavior(Generic[BArrayType, BDeviceType, BDtypeType, BRNGType]):
 Concrete usage:
 
 ```python
-from xbarray.pytorch import PyTorchComputeBackend
+from xbarray.backends.pytorch import PyTorchComputeBackend
 
 behavior_pytorch_instance = Behavior(PyTorchComputeBackend)
 behavior_pytorch_array = behavior_pytorch_instance.create_array()
+```
+
+## Cite
+
+XBArray is developed as part of the UniEnv project.
+If you use XBArray in your research, please cite it as follows:
+
+```bibtex
+@software{cao_unienv,
+  author = {Cao, Yunhao AND Fang, Kuan},
+  title = {{UniEnv: Unifying Robot Environments and Data APIs}},
+  year = {2025},
+  month = oct,
+  url = {https://github.com/UniEnvOrg/UniEnv},
+  license = {MIT}
+}
 ```
