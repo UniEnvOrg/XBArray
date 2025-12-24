@@ -7,6 +7,8 @@ __all__ = [
     "default_integer_dtype",
     "default_floating_dtype",
     "default_boolean_dtype",
+    "serialize_device",
+    "deserialize_device",
     "is_backendarray",
     "from_numpy",
     "from_other_backend",
@@ -23,6 +25,12 @@ __all__ = [
 default_integer_dtype = int
 default_floating_dtype = float
 default_boolean_dtype = bool
+
+def serialize_device(device : Optional[DEVICE_TYPE]) -> Optional[str]:
+    return None  # NumPy does not have device concept
+
+def deserialize_device(device_str : Optional[str]) -> Optional[DEVICE_TYPE]:
+    return None  # NumPy does not have device concept
 
 def is_backendarray(data : Any) -> bool:
     return isinstance(data, np.ndarray)

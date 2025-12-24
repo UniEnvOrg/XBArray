@@ -16,6 +16,8 @@ __all__ = [
     "default_integer_dtype",
     "default_floating_dtype",
     "default_boolean_dtype",
+    "serialize_device",
+    "deserialize_device",
     "is_backendarray",
     "from_numpy",
     "from_other_backend",
@@ -32,6 +34,24 @@ __all__ = [
 default_integer_dtype = torch.int32
 default_floating_dtype = torch.float32
 default_boolean_dtype = torch.bool
+
+def serialize_device(device : Optional[DEVICE_TYPE]) -> Optional[str]:
+    if device is None:
+        return None
+    if isinstance(device, str):
+        return device
+    assert isinstance(device, torch.device)
+    return f"{device.type}:{device.index if device.index is not None else 0}"
+
+def deserialize_device(device_str : Optional[str]) -> Optional[DEVICE_TYPE]:
+    if device_str is None:
+        return None
+    if ":" in device_str:
+        device_type, index_str = device_str.split(":")
+        index = int(index_str)
+        return torch.device(device_type, index)
+    else:
+        return torch.device(device_str)
 
 def is_backendarray(data : Any) -> bool:
     return isinstance(data, torch.Tensor)

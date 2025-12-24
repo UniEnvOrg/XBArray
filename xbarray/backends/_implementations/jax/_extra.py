@@ -9,6 +9,8 @@ __all__ = [
     "default_integer_dtype",
     "default_floating_dtype",
     "default_boolean_dtype",
+    "serialize_device",
+    "deserialize_device",
     "is_backendarray",
     "from_numpy",
     "from_other_backend",
@@ -25,6 +27,27 @@ __all__ = [
 default_integer_dtype = int
 default_floating_dtype = float
 default_boolean_dtype = bool
+
+def serialize_device(device : Optional[Any]) -> Optional[str]:
+    if device is None:
+        return None
+    assert hasattr(device, "platform") and hasattr(device, "id")
+    return device.platform + ":" + str(device.id)
+
+def deserialize_device(device_str : Optional[str]) -> Optional[Any]:
+    if device_str is None:
+        return None
+    platform, id_str = device_str.split(":")
+    id = int(id_str)
+    # Find the device with matching platform and id
+    for device in jax.devices(platform):
+        if device.platform == platform and device.id == id:
+            return device
+    # Fallback with the same platform
+    for device in jax.devices(platform):
+        if device.platform == platform:
+            return device
+    raise ValueError(f"Device with platform '{platform}' and id '{id}' not found.")
 
 def is_backendarray(data : Any) -> bool:
     return isinstance(data, jax.Array)

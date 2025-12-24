@@ -129,6 +129,14 @@ class ComputeBackend(ArrayAPINamespace[BArrayType, BDeviceType, BDtypeType], Pro
     random : RNGBackend[BArrayType, BDeviceType, BDtypeType, BRNGType]
 
     @abc.abstractmethod
+    def serialize_device(self, device : Optional[BDeviceType]) -> Optional[str]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def deserialize_device(self, device_str : Optional[str]) -> Optional[BDeviceType]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def is_backendarray(self, data : Any) -> bool:
         raise NotImplementedError
     
