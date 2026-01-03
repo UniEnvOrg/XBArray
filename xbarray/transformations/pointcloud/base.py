@@ -327,6 +327,7 @@ def farthest_point_sampling(
         rng (BRNGType): The random number generator.
         points_valid (Optional[BArrayType]): A boolean mask of shape (..., N) indicating valid points. If None, all points are considered valid.
     Returns:
+        BRNGType: The updated random number generator.
         BArrayType: The indices of the sampled points of shape (..., num_samples).
         Optional[BArrayType]: The valid mask of shape (..., num_samples). Returned only if points_valid is provided.
     """
@@ -399,6 +400,7 @@ def random_point_sampling(
         rng (BRNGType): The random number generator.
         points_valid (Optional[BArrayType]): A boolean mask of shape (..., N) indicating valid points. If None, all points are considered valid.
     Returns:
+        BRNGType: The updated random number generator.
         BArrayType: The indices of the sampled points of shape (..., num_samples).
         Optional[BArrayType]: The valid mask of shape (..., num_samples). Returned only if points_valid is provided.
     """
