@@ -135,7 +135,7 @@ def pixel_coordinate_and_depth_to_world(
     pixel_coordinates : BArrayType, 
     depth : BArrayType,
     intrinsic_matrix : BArrayType,
-    extrinsic_matrix : BArrayType
+    extrinsic_matrix : Optional[BArrayType] = None
 ) -> BArrayType:
     """
     Convert pixel coordinates and depth to world coordinates.
@@ -160,11 +160,14 @@ def pixel_coordinate_and_depth_to_world(
     ], axis=-1) # (..., N, 3)
     camera_coords *= depth[..., None]  # (..., N, 3)
 
-    R = extrinsic_matrix[..., :3, :3]  # (..., 3, 3)
-    t = extrinsic_matrix[..., :3, 3]  # (..., 3)
+    if extrinsic_matrix is not None:
+        R = extrinsic_matrix[..., :3, :3]  # (..., 3, 3)
+        t = extrinsic_matrix[..., :3, 3]  # (..., 3)
 
-    shifted_camera_coords = camera_coords - t[..., None, :]  # (..., N, 3)
-    world_coords = backend.matmul(shifted_camera_coords, R) # (..., N, 3)
+        shifted_camera_coords = camera_coords - t[..., None, :]  # (..., N, 3)
+        world_coords = backend.matmul(shifted_camera_coords, R) # (..., N, 3)
+    else:
+        world_coords = camera_coords  # (..., N, 3)
 
     valid_depth_mask = backend.logical_not(backend.logical_or(
         backend.isnan(depth),
@@ -179,7 +182,7 @@ def depth_image_to_world(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
     depth_image : BArrayType,
     intrinsic_matrix : BArrayType,
-    extrinsic_matrix : BArrayType
+    extrinsic_matrix : Optional[BArrayType] = None
 ) -> BArrayType:
     """
     Convert a depth image to world coordinates.
