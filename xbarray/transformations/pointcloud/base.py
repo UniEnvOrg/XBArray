@@ -62,10 +62,10 @@ def bilinear_interpolate(
 
     x = backend.clip(x, 0, W - 1)
     y = backend.clip(y, 0, H - 1)
-    x0 = backend.astype(backend.floor(x), backend.default_integer_dtype)
-    x1 = backend.minimum(x0 + 1, W - 1)
-    y0 = backend.astype(backend.floor(y), backend.default_integer_dtype)
-    y1 = backend.minimum(y0 + 1, H - 1)
+    x0 = backend.astype(backend.floor(x), pixel_coordinates.dtype)
+    x1 = backend.clip(x0 + 1, max=W - 1)
+    y0 = backend.astype(backend.floor(y), pixel_coordinates.dtype)
+    y1 = backend.clip(y0 + 1, max=H - 1)
     
     pc00 = backend.stack([x0, y0], axis=-1)  # (..., N, 2)
     pc01 = backend.stack([x0, y1], axis=-1)  # (..., N, 2)

@@ -98,7 +98,7 @@ def _sqrt_positive_part(backend: ComputeBackend[BArrayType, BDeviceType, BDtypeT
     but with a zero subgradient where x is 0.
     """
     positive_mask = x > 0
-    ret = backend.where(positive_mask, backend.sqrt(x), ret)
+    ret = backend.where(positive_mask, backend.sqrt(x), x)
     return ret
 
 
@@ -153,7 +153,8 @@ def matrix_to_quaternion(backend: ComputeBackend[BArrayType, BDeviceType, BDtype
 
     # We floor here at 0.1 but the exact level is not important; if q_abs is small,
     # the candidate won't be picked.
-    quat_candidates = quat_by_rijk / (2.0 * backend.maximum(q_abs[..., None], 0.1))
+    # Due to https://github.com/data-apis/array-api-compat/issues/271, cannot use `backend.maximum` here
+    quat_candidates = quat_by_rijk / (2.0 * backend.clip(q_abs[..., None], min=0.1))
 
     # if not for numerical problems, quat_candidates[i] should be same (up to a sign),
     # forall i; we pick the best-conditioned one (with the largest denominator)
