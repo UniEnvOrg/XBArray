@@ -217,7 +217,7 @@ def euler_angles_to_matrix(
     Returns:
         Rotation matrices as tensor of shape (..., 3, 3).
     """
-    if euler_angles.dim() == 0 or euler_angles.shape[-1] != 3:
+    if euler_angles.ndim == 0 or euler_angles.shape[-1] != 3:
         raise ValueError("Invalid input euler angles.")
     if len(convention) != 3:
         raise ValueError("Convention must have 3 letters.")
