@@ -219,7 +219,7 @@ def world_to_pixel_coordinate_and_depth(
     world_coords : BArrayType,
     intrinsic_matrix : BArrayType,
     extrinsic_matrix : Optional[BArrayType] = None
-) -> BArrayType:
+) -> Tuple[BArrayType, BArrayType]:
     """
     Convert world coordinates to pixel coordinates and depth.
     Args:
