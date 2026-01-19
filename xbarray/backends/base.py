@@ -124,6 +124,7 @@ class ComputeBackend(ArrayAPINamespace[BArrayType, BDeviceType, BDtypeType], Pro
     DTYPE_TYPE : Type[BDtypeType]
     RNG_TYPE : Type[BRNGType]
     default_integer_dtype : BDtypeType
+    default_index_dtype : BDtypeType
     default_floating_dtype : BDtypeType
     default_boolean_dtype : BDtypeType
     random : RNGBackend[BArrayType, BDeviceType, BDtypeType, BRNGType]

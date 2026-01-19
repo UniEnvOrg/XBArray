@@ -7,6 +7,7 @@ from xbarray.backends.base import ComputeBackend, SupportsDLPack
 
 __all__ = [
     "default_integer_dtype",
+    "default_index_dtype",
     "default_floating_dtype",
     "default_boolean_dtype",
     "serialize_device",
@@ -25,6 +26,7 @@ __all__ = [
 ]
 
 default_integer_dtype = int
+default_index_dtype = int
 default_floating_dtype = float
 default_boolean_dtype = bool
 

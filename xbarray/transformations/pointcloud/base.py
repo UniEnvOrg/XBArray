@@ -45,6 +45,7 @@ def bilinear_interpolate(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
     values : BArrayType,
     pixel_coordinates : BArrayType,
+    index_dtype : Optional[BDtypeType] = None,
     uniform_weights : bool = False
 ) -> BArrayType:
     """
@@ -60,13 +61,15 @@ def bilinear_interpolate(
     x = pixel_coordinates[..., 0]  # (..., N)
     y = pixel_coordinates[..., 1]  # (..., N)
 
+    index_dtype = index_dtype if index_dtype is not None else (pixel_coordinates.dtype if backend.dtype_is_real_integer(pixel_coordinates.dtype) else backend.default_index_dtype)
+
     x = backend.clip(x, 0, W - 1)
     y = backend.clip(y, 0, H - 1)
-    x0 = backend.astype(backend.floor(x), pixel_coordinates.dtype)
-    x1 = backend.clip(x0 + 1, max=W - 1)
-    y0 = backend.astype(backend.floor(y), pixel_coordinates.dtype)
-    y1 = backend.clip(y0 + 1, max=H - 1)
-    
+    x0 = backend.astype(backend.floor(x), index_dtype)
+    x1 = backend.astype(backend.clip(x0 + 1, max=W - 1), index_dtype)
+    y0 = backend.astype(backend.floor(y), index_dtype)
+    y1 = backend.astype(backend.clip(y0 + 1, max=H - 1), index_dtype)
+
     pc00 = backend.stack([x0, y0], axis=-1)  # (..., N, 2)
     pc01 = backend.stack([x0, y1], axis=-1)  # (..., N, 2)
     pc10 = backend.stack([x1, y0], axis=-1)  # (..., N, 2)
@@ -338,9 +341,9 @@ def farthest_point_sampling(
     B, N, D = flat_points.shape
     flat_points_valid = None if points_valid is None else backend.reshape(points_valid, [-1, N])  # (B, N)
     
-    batch_indices = backend.arange(B, dtype=backend.default_integer_dtype, device=device)
+    batch_indices = backend.arange(B, dtype=backend.default_index_dtype, device=device)
 
-    centroids_idx = backend.zeros((B, num_samples), dtype=backend.default_integer_dtype, device=device)  # sampled point indices
+    centroids_idx = backend.zeros((B, num_samples), dtype=backend.default_index_dtype, device=device)  # sampled point indices
     centroids_valid = None if flat_points_valid is None else backend.zeros((B, num_samples), dtype=backend.default_boolean_dtype, device=device)  # valid mask of sampled points
 
     distance = backend.full((B, N), backend.inf, device=device)  # distance of each point to its nearest centroid
@@ -353,7 +356,7 @@ def farthest_point_sampling(
 
     if flat_points_valid is not None:
         farthest_idx = backend.argmax(
-            backend.astype(flat_points_valid, backend.default_integer_dtype),
+            backend.astype(flat_points_valid, backend.default_index_dtype),
             axis=1
         )
     else:
@@ -361,7 +364,7 @@ def farthest_point_sampling(
             (B,),
             0, N, 
             rng=rng,
-            dtype=backend.default_integer_dtype, 
+            dtype=backend.default_index_dtype, 
             device=device
         )  # initial random farthest point
     centroids_idx[:, 0] = farthest_idx
@@ -412,7 +415,7 @@ def random_point_sampling(
     flat_points_valid = None if points_valid is None else backend.reshape(points_valid, [-1, N])  # (B, N)
     
     if flat_points_valid is None:
-        sampled_idx = backend.empty((B, num_samples), dtype=backend.default_integer_dtype, device=device)
+        sampled_idx = backend.empty((B, num_samples), dtype=backend.default_index_dtype, device=device)
         for b in range(B):
             rng, idx_b = backend.random.random_permutation(
                 N,
@@ -424,11 +427,11 @@ def random_point_sampling(
         return rng, unflat_sampled_idx, None
     else:
         # valid_counts = backend.sum(
-        #     backend.astype(flat_points_valid, backend.default_integer_dtype),
+        #     backend.astype(flat_points_valid, backend.default_index_dtype),
         #     axis=1
         # )  # (B,)
         # assert bool(backend.all(valid_counts >= num_samples)), "Not enough valid points to sample from."
-        sampled_idx = backend.zeros((B, num_samples), dtype=backend.default_integer_dtype, device=device)
+        sampled_idx = backend.zeros((B, num_samples), dtype=backend.default_index_dtype, device=device)
         sampled_valid = backend.zeros((B, num_samples), dtype=backend.default_boolean_dtype, device=device)
         for b in range(B):
             valid_indices_b = backend.nonzero(flat_points_valid[b])[0] # (valid_count_b,)

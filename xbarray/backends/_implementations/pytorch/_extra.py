@@ -14,6 +14,7 @@ PYTORCH_DTYPE_CAST_MAP = {
 
 __all__ = [
     "default_integer_dtype",
+    "default_index_dtype",
     "default_floating_dtype",
     "default_boolean_dtype",
     "serialize_device",
@@ -32,6 +33,7 @@ __all__ = [
 ]
 
 default_integer_dtype = torch.int32
+default_index_dtype = torch.long
 default_floating_dtype = torch.float32
 default_boolean_dtype = torch.bool
 
