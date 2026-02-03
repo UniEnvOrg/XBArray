@@ -11,6 +11,7 @@ __all__ = [
     "world_to_depth",
     "farthest_point_sampling",
     "random_point_sampling",
+    "pointcloud_jitter"
 ]
 
 gather_pixel_value = partial(base_impl.gather_pixel_value, BindingBackend)
@@ -21,3 +22,4 @@ world_to_pixel_coordinate_and_depth = partial(base_impl.world_to_pixel_coordinat
 world_to_depth = partial(base_impl.world_to_depth, BindingBackend)
 farthest_point_sampling = partial(base_impl.farthest_point_sampling, BindingBackend)
 random_point_sampling = partial(base_impl.random_point_sampling, BindingBackend)
+pointcloud_jitter = partial(base_impl.pointcloud_jitter, BindingBackend)

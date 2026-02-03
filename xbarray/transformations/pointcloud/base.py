@@ -9,7 +9,8 @@ __all__ = [
     "world_to_pixel_coordinate_and_depth",
     "world_to_depth",
     "farthest_point_sampling",
-    "random_point_sampling"
+    "random_point_sampling",
+    "pointcloud_jitter"
 ]
 
 def gather_pixel_value(
@@ -447,3 +448,40 @@ def random_point_sampling(
         unflat_sampled_idx = backend.reshape(sampled_idx, list(points.shape[:-2]) + [num_samples])
         unflat_sampled_valid = backend.reshape(sampled_valid, list(points.shape[:-2]) + [num_samples])
         return rng, unflat_sampled_idx, unflat_sampled_valid
+
+def pointcloud_jitter(
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
+    points : BArrayType,
+    sigma : float,
+    rng : BRNGType,
+    clip : Optional[float] = None,
+) -> Tuple[BRNGType, BArrayType]:
+    """
+    Apply jitter noise to point cloud.
+    Args:
+        backend (ComputeBackend): The compute backend to use.
+        points (BArrayType): The input points of shape (..., N, D) where D >= 3.
+        sigma (float): The standard deviation of the jitter noise.
+        rng (BRNGType): The random number generator.
+        clip (Optional[float]): The maximum absolute value of the jitter noise.
+    Returns:
+        BRNGType: The updated random number generator.
+        BArrayType: The jittered points of shape (..., N, D).
+    """
+    noise_shape = list(points.shape)
+    noise_shape[-1] = 3  # (..., N, 3)
+    rng, noise = backend.random.random_normal(
+        noise_shape,
+        mean=0.0,
+        std=sigma,
+        rng=rng,
+        dtype=points.dtype,
+        device=backend.device(points)
+    ) # (..., N, 3)
+    if clip is not None:
+        noise = backend.clip(noise, -clip, clip)
+    jittered_points = (points + noise) if  points.shape[-1] == 3 else backend.concat([
+        points[..., :3] + noise,
+        points[..., 3:]
+    ], axis=-1)
+    return rng, jittered_points
