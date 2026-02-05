@@ -1,6 +1,6 @@
 from . import base as base_impl
 from functools import partial
-from xbarray.backends.pytorch import PytorchComputeBackend as BindingBackend
+from xbarray.backends.pytorch import PyTorchComputeBackend as BindingBackend
 
 __all__ = [
     "gather_pixel_value",
