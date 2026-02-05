@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.1a14 (2026-02-05)
+
+- Added `xbarray.transformations.pointcloud.pointcloud_jitter` function to apply jitter noise to pointclouds for data augmentation.
+- Rename `PytorchComputeBackend` to `PyTorchComputeBackend` for consistent capitalization with UniEnv.
+
 ## 0.0.1a13 (2026-01-21)
 
 - Added `default_index_dtype` property to the ComputeBackend interface to specify the default dtype for indexing operations.
