@@ -40,8 +40,7 @@ def get_abbreviate_array_function(
                     return bool(elem)
                 else:
                     raise ValueError(f"Abbreviated array element dtype must be a real floating or integer or boolean type, actual dtype: {elem.dtype}")
-        else:
-            return array
+        return array
     return abbreviate_array
 
 def get_map_fn_over_arrays_function(
