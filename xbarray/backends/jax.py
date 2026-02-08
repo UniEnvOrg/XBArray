@@ -2,6 +2,9 @@ from ._cls_base import ComputeBackendImplCls
 from ._implementations import jax as jax_impl
 
 class JaxComputeBackend(metaclass=ComputeBackendImplCls[jax_impl.ARRAY_TYPE, jax_impl.DEVICE_TYPE, jax_impl.DTYPE_TYPE, jax_impl.RNG_TYPE]):
+    def __init__(self):
+        raise RuntimeError("NumpyComputeBackend is not meant to be instantiated. Use its static methods directly.")
+    
     ARRAY_TYPE = jax_impl.ARRAY_TYPE
     DTYPE_TYPE = jax_impl.DTYPE_TYPE
     DEVICE_TYPE = jax_impl.DEVICE_TYPE
