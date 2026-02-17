@@ -503,6 +503,7 @@ def quaternion_apply(
     real_parts = backend.zeros(point.shape[:-1] + (1,), dtype=point.dtype, device=backend.device(point))
     point_as_quaternion = backend.concat((real_parts, point), axis=-1)
     out = quaternion_raw_multiply(
+        backend,
         quaternion_raw_multiply(backend, quaternion, point_as_quaternion),
         quaternion_invert(backend, quaternion),
     )
