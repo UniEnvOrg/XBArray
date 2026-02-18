@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.01a16 (2026-02-18)
+
+- Minor bugfix on `xbarray.transformations.rotation_conversions.quaternion_apply`
+
 ## 0.0.1a15 (2026-02-07)
 
 - Added `xbarray.backends.get_backend_from_tensor` utility function to infer the appropriate ComputeBackend from a given tensor, improving interoperability with user code.
