@@ -1,4 +1,4 @@
-from typing import Any, Union, Callable, Mapping, Sequence
+from typing import Any, Optional, Union, Callable, Mapping, Sequence
 from array_api_typing.typing_compat import ArrayAPINamespace as CompatNamespace, ArrayAPIArray as CompatArray, ArrayAPIDType as CompatDType
 import array_api_compat
 import dataclasses
@@ -6,6 +6,7 @@ import dataclasses
 __all__ = [
     "get_abbreviate_array_function",
     "get_map_fn_over_arrays_function",
+    "get_map_fn_over_arrays_ex_function",
     "get_pad_dim_function",
 ]
 
@@ -59,7 +60,7 @@ def get_map_fn_over_arrays_function(
             except:
                 return ret
         elif isinstance(data, Sequence) and not isinstance(data, (str, bytes)):
-            ret = [map_fn_over_arrays(i, func) for i in data]
+            ret = [map_fn_over_arrays(v, func) for v in data]
             try:
                 return type(data)(ret)  # try to keep the same sequence type
             except:
@@ -69,6 +70,34 @@ def get_map_fn_over_arrays_function(
         else:
             return data
     return map_fn_over_arrays
+
+def get_map_fn_over_arrays_ex_function(
+    is_backendarray : Callable[[Any], bool],
+):
+    def map_fn_over_arrays_ex(data : Any, *supp_data : Optional[Any], func : Callable[[CompatArray, Optional[Any]], CompatArray]) -> Any:
+        """
+        Map a function to the data with the support of another data.
+        """
+        if is_backendarray(data):
+            return func(data, *supp_data)
+        elif isinstance(data, Mapping):
+            ret = {k: map_fn_over_arrays_ex(v, *(supp_data_i[k] for supp_data_i in supp_data), func=func) for k, v in data.items()}
+            try:
+                return type(data)(**ret)  # try to keep the same mapping type
+            except:
+                return ret
+        elif isinstance(data, Sequence) and not isinstance(data, (str, bytes)):
+            ret = [map_fn_over_arrays_ex(v, *(supp_data_i[i] for supp_data_i in supp_data), func=func) for i, v in enumerate(data)]
+            try:
+                return type(data)(ret)  # try to keep the same sequence type
+            except:
+                return ret
+        elif dataclasses.is_dataclass(data):
+            supp_data_next = [dataclasses.asdict(supp_data_i) if dataclasses.is_dataclass(supp_data_i) else supp_data_i for supp_data_i in supp_data]
+            return type(data)(**map_fn_over_arrays_ex(dataclasses.asdict(data), *supp_data_next, func=func))
+        else:
+            return data
+    return map_fn_over_arrays_ex
 
 def get_pad_dim_function(
     backend : CompatNamespace[CompatArray, Any, Any],

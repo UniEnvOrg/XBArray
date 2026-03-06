@@ -3,7 +3,7 @@ from ._implementations import pytorch as pytorch_impl
 
 class PyTorchComputeBackend(metaclass=ComputeBackendImplCls[pytorch_impl.ARRAY_TYPE, pytorch_impl.DEVICE_TYPE, pytorch_impl.DTYPE_TYPE, pytorch_impl.RNG_TYPE]):
     def __init__(self):
-        raise RuntimeError("NumpyComputeBackend is not meant to be instantiated. Use its static methods directly.")
+        raise RuntimeError("PyTorchComputeBackend is not meant to be instantiated. Use its static methods directly.")
     
     ARRAY_TYPE = pytorch_impl.ARRAY_TYPE
     DTYPE_TYPE = pytorch_impl.DTYPE_TYPE

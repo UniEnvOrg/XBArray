@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.1a17 (2026-03-05)
+- Added `map_fn_over_arrays_ex` function to the ComputeBackend interface, which extends `map_fn_over_arrays` by allowing the mapped function to use auxiliary data alongside the mapped array. This is useful for transformations that need to transform values based on multiple mappings.
+
 ## 0.0.01a16 (2026-02-18)
 
 - Minor bugfix on `xbarray.transformations.rotation_conversions.quaternion_apply`

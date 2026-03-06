@@ -22,6 +22,7 @@ __all__ = [
     "dtype_is_boolean",
     "abbreviate_array",
     "map_fn_over_arrays",
+    "map_fn_over_arrays_ex",
     "pad_dim",
 ]
 
@@ -122,6 +123,14 @@ def map_fn_over_arrays(
         func,
         data
     )
+
+def map_fn_over_arrays_ex(data : Any, *supp_data : Optional[Any], func : Callable[[ARRAY_TYPE, Optional[Any]], ARRAY_TYPE]):
+    return jax.tree.map(
+        func,
+        data,
+        *supp_data
+    )
+
 pad_dim = get_pad_dim_function(
     backend=compat_module,
 )

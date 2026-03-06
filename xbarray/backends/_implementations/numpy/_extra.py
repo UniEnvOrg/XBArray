@@ -20,6 +20,7 @@ __all__ = [
     "dtype_is_boolean",
     "abbreviate_array",
     "map_fn_over_arrays",
+    "map_fn_over_arrays_ex",
     "pad_dim",
 ]
 
@@ -90,6 +91,10 @@ abbreviate_array = get_abbreviate_array_function(
 )
 
 map_fn_over_arrays = get_map_fn_over_arrays_function(
+    is_backendarray=is_backendarray,
+)
+
+map_fn_over_arrays_ex = get_map_fn_over_arrays_ex_function(
     is_backendarray=is_backendarray,
 )
 

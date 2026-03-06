@@ -209,6 +209,14 @@ class ComputeBackend(ArrayAPINamespace[BArrayType, BDeviceType, BDtypeType], Pro
         raise NotImplementedError
 
     @abc.abstractmethod
+    def map_fn_over_arrays_ex(self, data : Any, *supp_data : Optional[Any], func : Callable[[BArrayType, Optional[Any]], BArrayType]) -> Any:
+        """
+        Map a function over arrays in a data structure with the support of another data structure and produce a new data structure with the same shape.
+        This is useful for applying a function to all arrays in a nested structure.
+        """
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def pad_dim(self, x : BArrayType, dim : int, target_size : int, value : Union[float, int] = 0) -> BArrayType:
         """
         Pad a dimension of an array to a target size with a given value.
