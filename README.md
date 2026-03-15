@@ -41,7 +41,7 @@ If you use XBArray in your research, please cite it as follows:
 
 ```bibtex
 @software{cao_unienv,
-  author = {Cao, Yunhao AND Fang, Kuan},
+  author = {Yunhao Cao AND Cory Fan AND Meryl Zhang AND Sabrina Liu AND Kuan Fang},
   title = {{UniEnv: Unifying Robot Environments and Data APIs}},
   year = {2025},
   month = oct,
