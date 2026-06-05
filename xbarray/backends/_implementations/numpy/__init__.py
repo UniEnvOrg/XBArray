@@ -9,7 +9,7 @@ from array_api_compat import numpy as compat_module
 import array_api_extra
 from functools import partial
 for api_name in dir(array_api_extra):
-    if api_name.startswith('_'):
+    if api_name.startswith('_') or api_name in ['testing']:
         continue
 
     if api_name in ['at', 'broadcast_shapes']:
