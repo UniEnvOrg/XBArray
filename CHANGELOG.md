@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.1a18 (2026-06-05)
+
+- Updated function export after `array_api_extra >= 0.10.2`
+
 ## 0.0.1a17 (2026-03-05)
 - Added `map_fn_over_arrays_ex` function to the ComputeBackend interface, which extends `map_fn_over_arrays` by allowing the mapped function to use auxiliary data alongside the mapped array. This is useful for transformations that need to transform values based on multiple mappings.
 
