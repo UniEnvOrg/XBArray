@@ -98,7 +98,7 @@ def _sqrt_positive_part(backend: ComputeBackend[BArrayType, BDeviceType, BDtypeT
     but with a zero subgradient where x is 0.
     """
     positive_mask = x > 0
-    ret = backend.where(positive_mask, backend.sqrt(x), x)
+    ret = backend.where(positive_mask, backend.sqrt(backend.maximum(x, 0)), x)
     return ret
 
 
