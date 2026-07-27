@@ -302,7 +302,7 @@ def matrix_to_euler_angles(
     for letter in convention:
         if letter not in ("X", "Y", "Z"):
             raise ValueError(f"Invalid letter {letter} in convention string.")
-    if matrix.size(-1) != 3 or matrix.size(-2) != 3:
+    if matrix.shape[-1] != 3 or matrix.shape[-2] != 3:
         raise ValueError(f"Invalid rotation matrix shape {matrix.shape}.")
     i0 = _index_from_letter(convention[0])
     i2 = _index_from_letter(convention[2])
