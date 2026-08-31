@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.1a19 (2026-08-31)
+
+- Fix `matrix_to_euler_angles` on numpy/jax backends
+
 ## 0.0.1a18 (2026-06-05)
 
 - Updated function export after `array_api_extra >= 0.10.2`
