@@ -116,3 +116,20 @@ def test_numpy_uniform_float32_large_bounds(np_backend):
     rng, x = np_backend.random.random_uniform((1000,), rng=rng, low=-big, high=big, dtype=np.float32)
     assert x.dtype == np.float32
     assert np.all(np.isfinite(x))
+
+
+_SAMPLERS = {
+    "random_discrete_uniform": lambda B, shape, rng: B.random.random_discrete_uniform(shape, 0, 5, rng=rng),
+    "random_uniform": lambda B, shape, rng: B.random.random_uniform(shape, rng=rng),
+    "random_exponential": lambda B, shape, rng: B.random.random_exponential(shape, rng=rng),
+    "random_normal": lambda B, shape, rng: B.random.random_normal(shape, rng=rng),
+    "random_geometric": lambda B, shape, rng: B.random.random_geometric(shape, p=0.5, rng=rng),
+}
+
+
+@pytest.mark.parametrize("sampler", list(_SAMPLERS))
+@pytest.mark.parametrize("shape, expected", [(3, (3,)), (np.int64(3), (3,)), ([2, 3], (2, 3)), ((2, 3), (2, 3))])
+def test_shape_may_be_int_or_sequence(backend, sampler, shape, expected):
+    rng = backend.random.random_number_generator(0)
+    _, x = _SAMPLERS[sampler](backend, shape, rng)
+    assert tuple(x.shape) == expected

@@ -1,4 +1,5 @@
 from typing import Union, Optional, Tuple, Any
+import operator
 from ._typing import ARRAY_TYPE, DTYPE_TYPE, DEVICE_TYPE, RNG_TYPE
 import numpy as np
 import jax
@@ -12,6 +13,13 @@ __all__ = [
     "random_geometric",
     "random_permutation"
 ]
+
+def _as_shape(shape : Union[int, Tuple[int, ...]]) -> Tuple[int, ...]:
+    """Normalise an int (incl. numpy integers) or a sequence of ints to a tuple of Python ints."""
+    try:
+        return (operator.index(shape),)
+    except TypeError:
+        return tuple(operator.index(dim) for dim in shape)
 
 def random_number_generator(
     seed : Optional[int] = None,
@@ -35,7 +43,7 @@ def random_discrete_uniform(
     device : Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     new_rng, rng = jax.random.split(rng)
-    t = jax.random.randint(rng, shape, minval=int(from_num), maxval=int(to_num), dtype=dtype or int)
+    t = jax.random.randint(rng, _as_shape(shape), minval=int(from_num), maxval=int(to_num), dtype=dtype or int)
     if device is not None:
         t = jax.device_put(t, device)
     return new_rng, t
@@ -50,7 +58,7 @@ def random_uniform(
     device : Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     new_rng, rng = jax.random.split(rng)
-    data = jax.random.uniform(rng, shape, dtype=dtype or float, minval=low, maxval=high)
+    data = jax.random.uniform(rng, _as_shape(shape), dtype=dtype or float, minval=low, maxval=high)
     if device is not None:
         data = jax.device_put(data, device)
     return new_rng, data
@@ -65,7 +73,7 @@ def random_exponential(
     device : Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     new_rng, rng = jax.random.split(rng)
-    data = jax.random.exponential(rng, shape, dtype=dtype or float) / lambd
+    data = jax.random.exponential(rng, _as_shape(shape), dtype=dtype or float) / lambd
     if device is not None:
         data = jax.device_put(data, device)
     return new_rng, data
@@ -80,7 +88,7 @@ def random_normal(
     device : Optional[Any] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     new_rng, rng = jax.random.split(rng)
-    data = jax.random.normal(rng, shape, dtype=dtype or float) * std + mean
+    data = jax.random.normal(rng, _as_shape(shape), dtype=dtype or float) * std + mean
     if device is not None:
         data = jax.device_put(data, device)
     return new_rng, data
@@ -95,7 +103,7 @@ def random_geometric(
     device: Optional[Any] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     new_rng, rng = jax.random.split(rng)
-    data = jax.random.geometric(rng, p=p, shape=shape, dtype=dtype or int)
+    data = jax.random.geometric(rng, p=p, shape=_as_shape(shape), dtype=dtype or int)
     if device is not None:
         data = jax.device_put(data, device)
     return new_rng, data
