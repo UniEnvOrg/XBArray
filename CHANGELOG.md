@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.0.1a20 (2026-10-16)
+
+- NumPy backend: `random_discrete_uniform` / `random_uniform` draw directly in the requested integer, bool or float32 dtype (up to ~5x faster on large arrays). NumPy random streams for these dtypes change for a given seed, and `random_discrete_uniform` bounds that do not fit the dtype now raise `ValueError` (as on PyTorch) instead of silently wrapping.
+- NumPy backend: `clip` calls NumPy directly instead of the generic array-api-compat implementation (~10x faster on small arrays, up to ~100x on large ones), with the same dtype, broadcasting and NaN behaviour.
+- PyTorch and JAX backends: random draws accept an `int` or NumPy-integer `shape` (previously `random_discrete_uniform` / `random_normal` failed on PyTorch and every draw failed on JAX for NumPy integers).
+- Added a pytest test suite under `tests/`.
+
 ## 0.0.1a19 (2026-08-31)
 
 - Fix `matrix_to_euler_angles` on numpy/jax backends
