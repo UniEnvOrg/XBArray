@@ -46,6 +46,6 @@ If you use XBArray in your research, please cite it as follows:
   year = {2025},
   month = oct,
   url = {https://github.com/UniEnvOrg/UniEnv},
-  license = {MIT}
+  license = {Apache-2.0}
 }
 ```
