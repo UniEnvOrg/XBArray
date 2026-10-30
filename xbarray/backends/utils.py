@@ -1,23 +1,27 @@
 from .base import ComputeBackend, BArrayType, BDeviceType, BDtypeType, BRNGType
 
+# Every backend is optional. A broken install can raise more than ImportError
+# (e.g. jaxlib raises RuntimeError on CPUs without AVX), so any failure only
+# disables that backend.
+
 try:
     import torch
     from .pytorch import PyTorchComputeBackend
-except ImportError:
+except Exception:
     torch = None
     PyTorchComputeBackend = None
 
 try:
     import numpy as np
     from .numpy import NumpyComputeBackend
-except ImportError:
+except Exception:
     np = None
     NumpyComputeBackend = None
 
 try:
     import jax
     from .jax import JaxComputeBackend
-except ImportError:
+except Exception:
     jax = None
     JaxComputeBackend = None
 
