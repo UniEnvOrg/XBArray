@@ -413,41 +413,27 @@ def random_point_sampling(
 
     flat_points = backend.reshape(points, [-1, *points.shape[-2:]])  # (B, N, D)
     B, N, D = flat_points.shape
-    flat_points_valid = None if points_valid is None else backend.reshape(points_valid, [-1, N])  # (B, N)
-    
-    if flat_points_valid is None:
-        sampled_idx = backend.empty((B, num_samples), dtype=backend.default_index_dtype, device=device)
-        for b in range(B):
-            rng, idx_b = backend.random.random_permutation(
-                N,
-                rng=rng,
-                device=device
-            )
-            sampled_idx[b] = idx_b[:num_samples]
+    # One batched draw, no per-row loop (and no host sync): every point gets a
+    # uniform key, invalid points are pushed past every valid one (+2), and each
+    # row keeps its num_samples smallest keys, i.e. a uniformly random subset
+    # of its valid points without replacement, valid points first.
+    rng, keys = backend.random.random_uniform((B, N), rng=rng, dtype=backend.default_floating_dtype, device=device)
+    if points_valid is not None:
+        flat_points_valid = backend.reshape(points_valid, [-1, N])  # (B, N)
+        keys = keys + 2.0 * backend.astype(backend.logical_not(flat_points_valid), keys.dtype)
+    sampled_idx = backend.astype(backend.argsort(keys, axis=-1)[:, :num_samples], backend.default_index_dtype)  # (B, num_samples)
+    if points_valid is None:
         unflat_sampled_idx = backend.reshape(sampled_idx, list(points.shape[:-2]) + [num_samples])
         return rng, unflat_sampled_idx, None
-    else:
-        # valid_counts = backend.sum(
-        #     backend.astype(flat_points_valid, backend.default_index_dtype),
-        #     axis=1
-        # )  # (B,)
-        # assert bool(backend.all(valid_counts >= num_samples)), "Not enough valid points to sample from."
-        sampled_idx = backend.zeros((B, num_samples), dtype=backend.default_index_dtype, device=device)
-        sampled_valid = backend.zeros((B, num_samples), dtype=backend.default_boolean_dtype, device=device)
-        for b in range(B):
-            valid_indices_b = backend.nonzero(flat_points_valid[b])[0] # (valid_count_b,)
-            rng, permuted_valid_indices_b = backend.random.random_permutation(
-                valid_indices_b.shape[0],
-                rng=rng,
-                device=device
-            )
-            sampled_idx_b = valid_indices_b[permuted_valid_indices_b[:num_samples]]  # (num_samples,)
-            sampled_idx[b, :sampled_idx_b.shape[0]] = sampled_idx_b
-            sampled_valid[b, :sampled_idx_b.shape[0]] = True
-            sampled_valid[b, sampled_idx_b.shape[0]:] = False
-        unflat_sampled_idx = backend.reshape(sampled_idx, list(points.shape[:-2]) + [num_samples])
-        unflat_sampled_valid = backend.reshape(sampled_valid, list(points.shape[:-2]) + [num_samples])
-        return rng, unflat_sampled_idx, unflat_sampled_valid
+
+    valid_counts = backend.sum(backend.astype(flat_points_valid, backend.default_index_dtype), axis=1)  # (B,)
+    slots = backend.arange(num_samples, dtype=backend.default_index_dtype, device=device)
+    sampled_valid = slots[None, :] < valid_counts[:, None]  # (B, num_samples)
+    # Slots past a row's valid count hold index 0 (as before), marked invalid.
+    sampled_idx = backend.where(sampled_valid, sampled_idx, backend.zeros_like(sampled_idx))
+    unflat_sampled_idx = backend.reshape(sampled_idx, list(points.shape[:-2]) + [num_samples])
+    unflat_sampled_valid = backend.reshape(sampled_valid, list(points.shape[:-2]) + [num_samples])
+    return rng, unflat_sampled_idx, unflat_sampled_valid
 
 def pointcloud_jitter(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
