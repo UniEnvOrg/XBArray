@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+- Added `ball_query` to `transformations.pointcloud`: up to K points strictly within a radius, first in index order.
+- PyTorch: `farthest_point_sampling` (with a mask) and `ball_query` run as Triton kernels on CUDA for 3D float32 points when `triton` is installed; other inputs use the generic code.
+
 ## 0.0.1a20 (2026-10-16)
 
 - NumPy backend: `random_discrete_uniform` / `random_uniform` draw directly in the requested integer, bool or float32 dtype (up to ~5x faster on large arrays). NumPy random streams for these dtypes change for a given seed, and `random_discrete_uniform` bounds that do not fit the dtype now raise `ValueError` (as on PyTorch) instead of silently wrapping.

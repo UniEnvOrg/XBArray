@@ -10,6 +10,7 @@ __all__ = [
     "world_to_depth",
     "farthest_point_sampling",
     "random_point_sampling",
+    "ball_query",
     "pointcloud_jitter"
 ]
 
@@ -345,7 +346,6 @@ def farthest_point_sampling(
     batch_indices = backend.arange(B, dtype=backend.default_index_dtype, device=device)
 
     centroids_idx = backend.zeros((B, num_samples), dtype=backend.default_index_dtype, device=device)  # sampled point indices
-    centroids_valid = None if flat_points_valid is None else backend.zeros((B, num_samples), dtype=backend.default_boolean_dtype, device=device)  # valid mask of sampled points
 
     distance = backend.full((B, N), backend.inf, device=device)  # distance of each point to its nearest centroid
     if flat_points_valid is not None:
@@ -369,21 +369,19 @@ def farthest_point_sampling(
             device=device
         )  # initial random farthest point
     centroids_idx[:, 0] = farthest_idx
-    if centroids_valid is not None and flat_points_valid is not None:
-        centroids_valid[:, 0] = flat_points_valid[batch_indices, farthest_idx]
     
     for i in range(1, num_samples):
         last_centroid = flat_points[batch_indices, farthest_idx][:, None, :]  # (B, 1, D)
-        perpoint_dist_to_last_centroid = backend.sum((flat_points - last_centroid) ** 2, axis=-1)  # (B, N)
+        offsets = flat_points - last_centroid  # (B, N, D)
+        perpoint_dist_to_last_centroid = backend.sum(offsets * offsets, axis=-1)  # (B, N)
         distance = backend.minimum(
             distance,
             perpoint_dist_to_last_centroid
         )  # (B, N)
         farthest_idx = backend.argmax(distance, axis=1) # (B,)
         centroids_idx[:, i] = farthest_idx
-        if centroids_valid is not None and flat_points_valid is not None:
-            centroids_valid[:, i] = flat_points_valid[batch_indices, farthest_idx]
     
+    centroids_valid = None if flat_points_valid is None else backend.take_along_axis(flat_points_valid, centroids_idx, axis=1)
     unflat_centroids_idx = backend.reshape(centroids_idx, list(points.shape[:-2]) + [num_samples])  # (..., num_samples)
     unflat_centroids_valid = None if centroids_valid is None else backend.reshape(centroids_valid, list(points.shape[:-2]) + [num_samples])  # (..., num_samples)
     return rng, unflat_centroids_idx, unflat_centroids_valid
@@ -434,6 +432,57 @@ def random_point_sampling(
     unflat_sampled_idx = backend.reshape(sampled_idx, list(points.shape[:-2]) + [num_samples])
     unflat_sampled_valid = backend.reshape(sampled_valid, list(points.shape[:-2]) + [num_samples])
     return rng, unflat_sampled_idx, unflat_sampled_valid
+
+def ball_query(
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
+    query_points : BArrayType,
+    points : BArrayType,
+    num_neighbors : int,
+    radius : float,
+    query_valid : Optional[BArrayType] = None,
+    points_valid : Optional[BArrayType] = None,
+) -> Tuple[BArrayType, BArrayType, BArrayType]:
+    """
+    Find, for every query point, up to `num_neighbors` points strictly within `radius`.
+
+    The neighbors are the first ones in index order, not the nearest ones.
+    Args:
+        backend (ComputeBackend): The compute backend to use.
+        query_points (BArrayType): The query points of shape (..., Q, D).
+        points (BArrayType): The points to search, of shape (..., N, D).
+        num_neighbors (int): The most neighbors to return per query point.
+        radius (float): The radius of the ball; a point exactly at this distance is excluded.
+        query_valid (Optional[BArrayType]): A boolean mask of shape (..., Q); invalid queries have no neighbors.
+        points_valid (Optional[BArrayType]): A boolean mask of shape (..., N); invalid points are never neighbors.
+    Returns:
+        BArrayType: The neighbor indices of shape (..., Q, num_neighbors), 0 where there is no neighbor.
+        BArrayType: The squared distances of shape (..., Q, num_neighbors), 0 where there is no neighbor.
+        BArrayType: The valid mask of shape (..., Q, num_neighbors); each query's neighbors come first.
+    """
+    assert 0 < num_neighbors <= points.shape[-2], "num_neighbors must be in (0, N]"
+    assert radius > 0, "radius must be positive"
+    device = backend.device(points)
+
+    offsets = query_points[..., :, None, :] - points[..., None, :, :]  # (..., Q, N, D)
+    distances2 = backend.sum(offsets * offsets, axis=-1)  # (..., Q, N)
+    radius_array = backend.full((), radius, dtype=distances2.dtype, device=device)  # filled on the device, no host copy
+    in_ball = distances2 < radius_array * radius_array
+    if points_valid is not None:
+        in_ball = backend.logical_and(in_ball, points_valid[..., None, :])
+    if query_valid is not None:
+        in_ball = backend.logical_and(in_ball, query_valid[..., None])
+
+    # A stable sort on "outside the ball" puts each query's neighbors first, in index order.
+    outside = backend.astype(backend.logical_not(in_ball), backend.default_index_dtype)
+    order = backend.argsort(outside, axis=-1, stable=True)[..., :num_neighbors]
+    neighbor_valid = backend.take_along_axis(in_ball, order, axis=-1)
+    neighbor_idx = backend.where(neighbor_valid, order, backend.zeros_like(order))
+    neighbor_distances2 = backend.where(
+        neighbor_valid,
+        backend.take_along_axis(distances2, order, axis=-1),
+        backend.zeros_like(distances2[..., :num_neighbors]),
+    )
+    return neighbor_idx, neighbor_distances2, neighbor_valid
 
 def pointcloud_jitter(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
