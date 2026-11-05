@@ -345,7 +345,6 @@ def farthest_point_sampling(
     
     batch_indices = backend.arange(B, dtype=backend.default_index_dtype, device=device)
 
-    centroids_idx = backend.zeros((B, num_samples), dtype=backend.default_index_dtype, device=device)  # sampled point indices
 
     distance = backend.full((B, N), backend.inf, device=device)  # distance of each point to its nearest centroid
     if flat_points_valid is not None:
@@ -368,7 +367,7 @@ def farthest_point_sampling(
             dtype=backend.default_index_dtype, 
             device=device
         )  # initial random farthest point
-    centroids_idx[:, 0] = farthest_idx
+    centroids = [farthest_idx]  # sampled centroid indices, each (B,)
     
     for i in range(1, num_samples):
         last_centroid = flat_points[batch_indices, farthest_idx][:, None, :]  # (B, 1, D)
@@ -379,8 +378,9 @@ def farthest_point_sampling(
             perpoint_dist_to_last_centroid
         )  # (B, N)
         farthest_idx = backend.argmax(distance, axis=1) # (B,)
-        centroids_idx[:, i] = farthest_idx
+        centroids.append(farthest_idx)
     
+    centroids_idx = backend.stack(centroids, axis=1)  # (B, num_samples)
     centroids_valid = None if flat_points_valid is None else backend.take_along_axis(flat_points_valid, centroids_idx, axis=1)
     unflat_centroids_idx = backend.reshape(centroids_idx, list(points.shape[:-2]) + [num_samples])  # (..., num_samples)
     unflat_centroids_valid = None if centroids_valid is None else backend.reshape(centroids_valid, list(points.shape[:-2]) + [num_samples])  # (..., num_samples)

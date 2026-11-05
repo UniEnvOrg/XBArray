@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file.
 
 - Added `ball_query` to `transformations.pointcloud`: up to K points strictly within a radius, first in index order.
 - PyTorch: `farthest_point_sampling` (with a mask) and `ball_query` run as Triton kernels on CUDA for 3D float32 points when `triton` is installed; other inputs use the generic code.
+- `farthest_point_sampling` works on the JAX backend, including under `jit` (it wrote its result in place).
 
 ## 0.0.1a20 (2026-10-16)
 
