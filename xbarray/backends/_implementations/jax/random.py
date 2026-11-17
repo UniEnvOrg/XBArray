@@ -43,7 +43,21 @@ def random_discrete_uniform(
     device : Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     new_rng, rng = jax.random.split(rng)
-    t = jax.random.randint(rng, _as_shape(shape), minval=int(from_num), maxval=int(to_num), dtype=dtype or int)
+    from_num, to_num = int(from_num), int(to_num)
+    t = None
+    if dtype is not None:
+        # Materialised dtype: without x64, jax stores int64 as int32
+        np_dtype = np.dtype(jax.numpy.empty((0,), dtype=dtype).dtype)
+        if np_dtype.kind in "iu" and np_dtype.itemsize <= 4:
+            info = np.iinfo(np_dtype)
+            if from_num == int(info.min) and to_num == int(info.max) + 1:
+                # The whole dtype range: raw random bits (``randint`` cannot take ``maxval``
+                # = int32 max + 1, and is ~3x slower for uint8 images)
+                t = jax.random.bits(rng, _as_shape(shape), dtype=np.dtype(f"uint{np_dtype.itemsize * 8}"))
+                if np_dtype.kind == "i":
+                    t = jax.lax.bitcast_convert_type(t, np_dtype)
+    if t is None:
+        t = jax.random.randint(rng, _as_shape(shape), minval=from_num, maxval=to_num, dtype=dtype or int)
     if device is not None:
         t = jax.device_put(t, device)
     return new_rng, t

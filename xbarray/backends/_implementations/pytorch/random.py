@@ -1,4 +1,5 @@
 from typing import Union, Optional, Tuple, Any
+import math
 import operator
 from ._typing import ARRAY_TYPE, DTYPE_TYPE, DEVICE_TYPE, RNG_TYPE
 import torch
@@ -19,6 +20,30 @@ def _as_shape(shape : Union[int, Tuple[int, ...]]) -> Tuple[int, ...]:
         return (operator.index(shape),)
     except TypeError:
         return tuple(operator.index(dim) for dim in shape)
+
+# Integer dtypes whose full range is drawn as raw random bits (see ``random_discrete_uniform``)
+_FULL_RANGE_DTYPES = (torch.uint8, torch.int8, torch.int16, torch.int32, torch.int64)
+
+def _random_bits(
+    shape : Tuple[int, ...],
+    rng : RNG_TYPE,
+    dtype : DTYPE_TYPE,
+    device : Optional[DEVICE_TYPE],
+) -> ARRAY_TYPE:
+    """Uniform values over the whole range of the integer ``dtype``, drawn as 64-bit words.
+
+    ``torch.randint`` costs the same per element whatever the dtype, so drawing
+    ``itemsize / 8`` as many int64 words and reinterpreting their bytes is up to
+    8x faster on CPU (uint8 images). ``randint``'s exclusive upper bound leaves
+    out the single word ``2**63 - 1``, a bias of ``2**-64``.
+    """
+    n = math.prod(shape)
+    itemsize = torch.empty((), dtype=dtype).element_size()
+    words = torch.randint(
+        -2 ** 63, 2 ** 63 - 1, (-(-n * itemsize // 8),),
+        generator=rng, dtype=torch.int64, device=device,
+    )
+    return words.view(dtype)[:n].reshape(shape)
 
 def random_number_generator(
     seed : Optional[int] = None,
@@ -43,7 +68,12 @@ def random_discrete_uniform(
     dtype : Optional[DTYPE_TYPE] = None, 
     device : Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
-    t = torch.randint(int(from_num), int(to_num), _as_shape(shape), generator=rng, dtype=dtype, device=device)
+    from_num, to_num = int(from_num), int(to_num)
+    if dtype in _FULL_RANGE_DTYPES:
+        info = torch.iinfo(dtype)
+        if from_num == info.min and to_num == info.max + 1:
+            return rng, _random_bits(_as_shape(shape), rng, dtype, device)
+    t = torch.randint(from_num, to_num, _as_shape(shape), generator=rng, dtype=dtype, device=device)
     return rng, t
 
 def random_uniform(
@@ -56,7 +86,9 @@ def random_uniform(
     device : Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     t = torch.rand(_as_shape(shape), generator=rng, dtype=dtype, device=device)
-    t = t * (high - low) + low
+    if low != 0.0 or high != 1.0:
+        # Two scalar ops cost ~3x the draw itself for small tensors: skip them for [0, 1)
+        t = t * (high - low) + low
     return rng, t
 
 def random_exponential(

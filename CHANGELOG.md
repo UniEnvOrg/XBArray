@@ -7,6 +7,8 @@ All notable changes to this project will be documented in this file.
 - Added `ball_query` to `transformations.pointcloud`: up to K points strictly within a radius, first in index order.
 - PyTorch: `farthest_point_sampling` (with a mask) and `ball_query` run as Triton kernels on CUDA for 3D float32 points when `triton` is installed; other inputs use the generic code.
 - `farthest_point_sampling` works on the JAX backend, including under `jit` (it wrote its result in place).
+- PyTorch backend: `random_uniform` with the default `[0, 1)` bounds returns the draw as is (the two scalar ops it applied cost ~3x the draw for small tensors).
+- PyTorch and JAX backends: `random_discrete_uniform` over the whole range of an integer dtype (e.g. `[0, 256)` for uint8 images) draws raw random bits: ~6x faster on CPU for uint8 on PyTorch, ~3x on JAX. It also fixes the full int32 range on JAX (`maxval = 2**31` overflowed) and the full int64 range on PyTorch. Random streams for these draws change for a given seed.
 
 ## 0.0.1a20 (2026-10-16)
 

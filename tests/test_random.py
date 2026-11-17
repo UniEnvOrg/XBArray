@@ -42,6 +42,24 @@ def test_discrete_uniform_full_dtype_range(backend):
     assert values.min() == 0 and values.max() == 255
 
 
+@pytest.mark.parametrize("dtype_name", INT_DTYPES)
+@pytest.mark.parametrize("shape", [(), (1,), (3,), (5, 7), (128, 128, 3)])
+def test_discrete_uniform_full_range_any_shape(backend, dtype_name, shape):
+    # The whole range of the dtype (torch draws it as raw random bits): odd sizes and 0-d too
+    dtype = getattr(backend, dtype_name)
+    info = np.iinfo(np.dtype(dtype_name))
+    rng = backend.random.random_number_generator(4)
+    rng, x = backend.random.random_discrete_uniform(shape, int(info.min), int(info.max) + 1, rng=rng, dtype=dtype)
+    assert backend.is_backendarray(x)
+    assert x.dtype == dtype
+    assert tuple(x.shape) == shape
+    if len(shape) == 3:
+        values = _to_numpy(backend, x).astype(np.float64)
+        span = float(info.max) - float(info.min)
+        assert abs((values.mean() - float(info.min)) / span - 0.5) < 0.01
+        assert values.min() < float(info.min) + 0.01 * span and values.max() > float(info.max) - 0.01 * span
+
+
 @pytest.mark.parametrize("dtype_name", FLOAT_DTYPES)
 @pytest.mark.parametrize("shape", SHAPES)
 @pytest.mark.parametrize("low,high", [(0.0, 1.0), (-1.0, 1.0), (2.0, 5.0)])
@@ -133,3 +151,42 @@ def test_shape_may_be_int_or_sequence(backend, sampler, shape, expected):
     rng = backend.random.random_number_generator(0)
     _, x = _SAMPLERS[sampler](backend, shape, rng)
     assert tuple(x.shape) == expected
+
+
+# --- torch-specific behaviour -------------------------------------------------------
+
+def test_torch_discrete_uniform_full_int64_range():
+    torch = pytest.importorskip("torch")
+    from xbarray.backends.pytorch import PyTorchComputeBackend as B
+    rng = B.random.random_number_generator(5)
+    info = torch.iinfo(torch.int64)
+    # ``torch.randint`` itself cannot take an upper bound of 2**63
+    rng, x = B.random.random_discrete_uniform((4096,), info.min, info.max + 1, rng=rng, dtype=torch.int64)
+    assert x.dtype == torch.int64 and tuple(x.shape) == (4096,)
+    assert (x < 0).float().mean().item() == pytest.approx(0.5, abs=0.05)
+
+
+@pytest.mark.parametrize("device", ["cpu", "cuda"])
+def test_torch_full_range_on_device(device):
+    torch = pytest.importorskip("torch")
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("no CUDA device")
+    from xbarray.backends.pytorch import PyTorchComputeBackend as B
+    rng = B.random.random_number_generator(6, device=device)
+    rng, x = B.random.random_discrete_uniform((2, 5, 3), 0, 256, rng=rng, dtype=torch.uint8, device=device)
+    assert x.device.type == device and x.dtype == torch.uint8 and tuple(x.shape) == (2, 5, 3)
+    assert x.is_contiguous()
+
+
+def test_torch_same_seed_same_stream():
+    torch = pytest.importorskip("torch")
+    from xbarray.backends.pytorch import PyTorchComputeBackend as B
+
+    def draw():
+        rng = B.random.random_number_generator(7)
+        rng, a = B.random.random_uniform((9,), rng=rng, dtype=torch.float32)
+        rng, b = B.random.random_discrete_uniform((9,), 0, 256, rng=rng, dtype=torch.uint8)
+        return a, b
+
+    (a1, b1), (a2, b2) = draw(), draw()
+    assert torch.equal(a1, a2) and torch.equal(b1, b2)
