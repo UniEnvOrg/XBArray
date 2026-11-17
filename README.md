@@ -36,16 +36,5 @@ behavior_pytorch_array = behavior_pytorch_instance.create_array()
 
 ## Cite
 
-XBArray is developed as part of the UniEnv project.
-If you use XBArray in your research, please cite it as follows:
-
-```bibtex
-@software{cao_unienv,
-  author = {Yunhao Cao AND Cory Fan AND Meryl Zhang AND Sabrina Liu AND Kuan Fang},
-  title = {{UniEnv: Unifying Robot Environments and Data APIs}},
-  year = {2025},
-  month = oct,
-  url = {https://github.com/UniEnvOrg/UniEnv},
-  license = {Apache-2.0}
-}
-```
+XBArray is developed as part of UniEnv. If you use it in research, please cite UniEnv; the
+current author list and BibTeX are on [unienvorg.github.io](https://unienvorg.github.io/#cite).

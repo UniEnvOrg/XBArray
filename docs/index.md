@@ -27,12 +27,10 @@ from xbarray import ComputeBackend
 from xbarray.backends.numpy import NumpyComputeBackend
 from xbarray.backends.pytorch import PyTorchComputeBackend
 
-
 def normalize(backend: ComputeBackend, x):
     """Scale each row of x to unit length."""
     norms = backend.linalg.vector_norm(x, axis=-1, keepdims=True)
     return x / backend.clip(norms, min=1e-12)
-
 
 for backend in (NumpyComputeBackend, PyTorchComputeBackend):
     x = backend.asarray([[3.0, 4.0], [0.0, 2.0]])
@@ -114,15 +112,5 @@ Apache-2.0 license.
 
 ## Cite
 
-If you use XBArray in your research, please cite it as follows:
-
-```bibtex
-@software{cao_unienv,
-  author = {Yunhao Cao AND Cory Fan AND Meryl Zhang AND Sabrina Liu AND Kuan Fang},
-  title = {{UniEnv: Unifying Robot Environments and Data APIs}},
-  year = {2025},
-  month = oct,
-  url = {https://github.com/UniEnvOrg/UniEnv},
-  license = {Apache-2.0}
-}
-```
+XBArray is developed as part of UniEnv. If you use it in research, please cite UniEnv; the
+current author list and BibTeX are on [unienvorg.github.io](https://unienvorg.github.io/#cite).
