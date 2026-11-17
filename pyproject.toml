@@ -18,10 +18,21 @@ torch = [
 jax = [
     "jax"
 ]
+docs = [
+    # MkDocs 2 drops support for existing themes and plugins; stay on 1.x.
+    "mkdocs>=1.6,<2",
+    "mkdocs-material>=9.6,<10",
+    "mkdocstrings[python]>=0.29",
+    "mkdocs-gen-files",
+    "mkdocs-literate-nav",
+    "mkdocs-section-index",
+    "mike>=2.1",
+    "ruff",  # formats long signatures in the API reference
+]
 
 [project.urls]
 Homepage = "https://github.com/UniEnvOrg/XBArray"
-Documentation = "https://github.com/UniEnvOrg/XBArray"
+Documentation = "https://unienvorg.github.io/XBArray/"
 Repository = "https://github.com/UniEnvOrg/XBArray"
 Issues = "https://github.com/UniEnvOrg/XBArray/issues"
 Changelog = "https://github.com/UniEnvOrg/XBArray/blob/main/CHANGELOG.md"
