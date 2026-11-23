@@ -47,7 +47,10 @@ def serialize_device(device : Optional[DEVICE_TYPE]) -> Optional[str]:
     if isinstance(device, str):
         return device
     assert isinstance(device, torch.device)
-    return f"{device.type}:{device.index if device.index is not None else 0}"
+    if device.index is None:
+        # e.g. torch.device("cuda") means the *current* CUDA device, not necessarily cuda:0
+        return device.type
+    return f"{device.type}:{device.index}"
 
 def deserialize_device(device_str : Optional[str]) -> Optional[DEVICE_TYPE]:
     if device_str is None:
