@@ -50,7 +50,7 @@ A rotation of 90 degrees around the z axis, in several representations:
     #  [ 1.  0.  0.]
     #  [ 0.  0.  1.]]
 
-    print(rc.matrix_to_euler_angles(R, "XYZ"))   # [-0.        0.        1.5707964]
+    print(rc.matrix_to_euler_angles(R, "XYZ"))   # [0.        0.        1.5707964]
     print(rc.quaternion_to_axis_angle(q))        # [0.        0.        1.5707963]
     print(rc.matrix_to_rotation_6d(R).shape)     # (6,)
     ```
@@ -70,7 +70,7 @@ A rotation of 90 degrees around the z axis, in several representations:
     #         [ 1.,  0.,  0.],
     #         [ 0.,  0.,  1.]])
 
-    print(rc.matrix_to_euler_angles(R, "XYZ"))   # tensor([-0.0000, 0.0000, 1.5708])
+    print(rc.matrix_to_euler_angles(R, "XYZ"))   # tensor([0.0000, 0.0000, 1.5708])
     print(rc.quaternion_to_axis_angle(q))        # tensor([0.0000, 0.0000, 1.5708])
     print(rc.matrix_to_rotation_6d(R).shape)     # torch.Size([6])
     ```
@@ -90,7 +90,7 @@ A rotation of 90 degrees around the z axis, in several representations:
     #  [ 1.  0.  0.]
     #  [ 0.  0.  1.]]
 
-    print(rc.matrix_to_euler_angles(R, "XYZ"))   # [-0.        0.        1.5707964]
+    print(rc.matrix_to_euler_angles(R, "XYZ"))   # [0.        0.        1.5707964]
     print(rc.quaternion_to_axis_angle(q))        # [0.        0.        1.5707964]
     print(rc.matrix_to_rotation_6d(R).shape)     # (6,)
     ```
@@ -135,6 +135,15 @@ Quaternion operations: `quaternion_multiply`, `quaternion_invert`, `quaternion_a
 
 `axis_angle_to_matrix` and `matrix_to_axis_angle` take a `fast` flag, as in PyTorch3D.
 The default, `fast=False`, goes through quaternions.
+
+`matrix_to_euler_angles` handles gimbal lock like scipy: when the central angle makes
+the first and third axes coincide, the third angle is set to `0` and the first angle
+carries the whole rotation, so the angles always rebuild the input matrix.
+`quaternion_to_axis_angle` accepts quaternions with a negative real part (`q` and `-q`
+are the same rotation) and returns an angle in `[0, pi]`.
+
+`random_quaternions(rng, n)`, `random_rotations(rng, n)` and `random_rotation(rng)`
+follow the random-number convention and return `(rng, result)`.
 
 ## Generic use
 

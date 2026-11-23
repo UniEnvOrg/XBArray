@@ -57,13 +57,17 @@ How the data moves depends on the target:
 
 | Target | Method |
 | --- | --- |
-| PyTorch | `torch.from_dlpack(source.to_dlpack(data))` |
-| JAX | `jax.dlpack.from_dlpack(source.to_dlpack(data))` |
+| PyTorch | From NumPy: `from_numpy(data)`. Otherwise `torch.from_dlpack(source.to_dlpack(data))`, cloned when the source is JAX |
+| JAX | From host (CPU) data: `from_numpy(source.to_numpy(data))`, onto JAX's default device. Otherwise DLPack import of a copy made by the source library |
 | NumPy | `source.to_numpy(data)` |
 
 [DLPack](https://dmlc.github.io/dlpack/latest/) passes the buffer without a copy when
-both libraries support the array's device. `to_dlpack(x)` returns `x` itself on every backend, since
-NumPy arrays, PyTorch tensors and JAX arrays all implement `__dlpack__`.
+both libraries support the array's device. `to_dlpack(x)` returns `x` itself on NumPy
+and JAX, and `x.detach()` on PyTorch, since NumPy arrays, PyTorch tensors and JAX
+arrays all implement `__dlpack__`. JAX arrays are immutable, so a conversion into or out
+of JAX copies the data: a later in-place write on the PyTorch or NumPy side cannot
+change a JAX array. Between NumPy and PyTorch the buffer is shared, as with
+`torch.from_numpy`.
 
 If you do not know the source backend, find it first:
 
@@ -107,29 +111,9 @@ print(backend.map_fn_over_arrays_ex(obs, scale, func=lambda x, s: x * s))
 # {'pos': array([10., 20.]), 'vel': array([1.5, 2. ])}
 ```
 
-The two backend families walk the structure differently:
-
-=== "NumPy and PyTorch"
-
-    XBArray walks mappings, sequences (except `str` and `bytes`) and dataclasses.
-    `func` is called only on arrays of this backend. Other values are returned
-    unchanged. The function tries to rebuild each container with its original type
-    and falls back to a `dict` or `list` if that fails. A `namedtuple`, for example,
-    comes back as a `list`.
-
-=== "JAX"
-
-    XBArray calls `jax.tree.map`. Containers are whatever JAX treats as pytree nodes,
-    and `func` is called on **every leaf**, including Python numbers and strings.
-    In the first example above, `x * 2` on the string `"episode-0"` would give
-    `"episode-0episode-0"`. Filter inside `func` if your data has non-array leaves:
-
-    ```python
-    from xbarray.backends.jax import JaxComputeBackend as backend
-
-    data = {"x": backend.ones(2), "step": 3}
-    out = backend.map_fn_over_arrays(
-        data, lambda v: v * 2 if backend.is_backendarray(v) else v
-    )
-    print(out["step"])  # 3
-    ```
+XBArray walks mappings, sequences (except `str` and `bytes`), namedtuples and
+dataclasses on every backend. `func` is called only on arrays of this backend; other
+values are returned unchanged. Each container is rebuilt with its original type
+(falling back to a `dict` or `list` if that fails); dataclasses are rebuilt with
+`dataclasses.replace`, so nested dataclasses keep their types. On JAX, other
+registered pytree nodes are walked with `jax.tree.map`.

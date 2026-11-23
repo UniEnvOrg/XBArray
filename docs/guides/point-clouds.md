@@ -26,8 +26,11 @@ and a validity flag. Pixels with depth `<= 0` or NaN get flag `0`.
 
 `world_to_pixel_coordinate_and_depth(world_coords, intrinsic_matrix, extrinsic_matrix=None)`
 goes the other way. It takes `(..., N, 3)` points, or `(..., N, 4)` points whose last
-column is the validity flag, and returns pixel coordinates `(..., N, 2)` in `(x, y)`
-order plus depth `(..., N)`. Points behind the camera get depth `0` and pixel `(0, 0)`.
+column is the validity flag (nonzero = valid), and returns pixel coordinates `(..., N, 2)`
+in `(x, y)` order plus depth `(..., N)`. Points behind the camera or flagged invalid get
+depth `0` and pixel `(0, 0)`. `world_to_depth(world_coords, extrinsic_matrix=None)`
+returns only the depth, with the same rules. The output of `depth_image_to_world`
+(reshaped to `(..., N, 4)`) can be passed back directly.
 
 ```python
 import numpy as np
@@ -58,7 +61,8 @@ coordinates to the image, and return `(..., N, C)`:
 - `gather_pixel_value(values, pixel_coordinates)` takes integer coordinates. On
   PyTorch they must be `int64`.
 - `bilinear_interpolate(values, pixel_coordinates)` takes float coordinates. Neighbour
-  pixels that contain NaN are left out of the weighted average.
+  pixels that contain NaN are left out of the weighted average. The result is floating
+  point, also for integer images.
 
 ## Sampling points
 

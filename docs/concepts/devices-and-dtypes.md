@@ -108,15 +108,15 @@ back. Use them to store a device in a config file or send it between processes.
 import torch
 from xbarray.backends.pytorch import PyTorchComputeBackend as backend
 
-s = backend.serialize_device(torch.device("cpu"))
-print(s)                               # cpu:0
-print(backend.deserialize_device(s))   # cpu:0
+s = backend.serialize_device(torch.device("cuda", 1))
+print(s)                               # cuda:1
+print(backend.deserialize_device(s))   # cuda:1
 ```
 
 | Backend | `serialize_device` output | Notes |
 | --- | --- | --- |
 | NumPy | always `None` | `deserialize_device` also returns `None` |
-| PyTorch | `"<type>:<index>"`, for example `"cuda:1"` | A missing index becomes `0`. A string device is returned as is |
+| PyTorch | `"<type>:<index>"`, for example `"cuda:1"`, or `"<type>"` | A device without an index (`torch.device("cuda")`, the current CUDA device) is serialized without one. A string device is returned as is |
 | JAX | `"<platform>:<id>"`, for example `"cpu:0"` | Deserializing looks the device up in `jax.devices(platform)`; if the id is not found it falls back to the first device of that platform |
 
 Both functions map `None` to `None`.

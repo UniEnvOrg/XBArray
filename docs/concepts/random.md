@@ -22,18 +22,19 @@ generator type:
 | JAX | a typed PRNG key (`jax.Array`) | `jax.random.key(seed)` |
 
 On PyTorch the generator belongs to a device. To draw on a GPU, create the generator
-with `device="cuda"` and pass the same `device=` to the draws.
+with `device="cuda"`; draws without `device=` then happen on the generator's device.
+On JAX, `device=` places the key on that device.
 
 !!! note "Pass a seed"
-    `seed=None` behaves differently on each backend:
+    `seed=None` gives a different stream for every new generator, but the seed comes
+    from a different place on each backend:
 
     - NumPy seeds from fresh OS entropy.
-    - PyTorch does not seed the new `torch.Generator`, so it starts from PyTorch's
-      fixed default seed. Every unseeded generator produces the same numbers.
-    - JAX picks a seed with `numpy.random.randint(65535)`. It depends on NumPy's
-      global random state and has only 65535 possible values.
+    - PyTorch seeds from fresh entropy (`torch.Generator.seed()`).
+    - JAX draws a 32-bit seed from NumPy's global random state, so
+      `numpy.random.seed(...)` makes it reproducible.
 
-    Pass an explicit seed when you need reproducible or independent streams.
+    Pass an explicit seed when you need reproducible streams.
 
 ## Drawing numbers
 
@@ -96,10 +97,6 @@ Every function also accepts `dtype=` and `device=`.
 | `random_geometric(shape, *, p, rng)` | Geometric with success probability `p` |
 | `random_permutation(n, *, rng)` | A random permutation of `0 .. n-1` |
 
-!!! warning
-    `random_permutation` currently raises `TypeError` on the JAX backend: it passes a
-    `dtype=` argument that `jax.random.permutation` does not accept.
-
 ### Dtypes of the results
 
 Without `dtype=`, each library picks its own default. Pass `dtype=` when the dtype
@@ -109,7 +106,13 @@ matters:
 | --- | --- | --- | --- |
 | `random_discrete_uniform` | `int64` | `int64` | `int32` |
 | `random_uniform`, `random_normal`, `random_exponential` | `float64` | `float32` | `float32` |
-| `random_geometric` | `int64` | `float32` | `int32` |
+| `random_geometric` | `int64` | `int64` | `int32` |
+| `random_permutation` | `int64` | `int64` | `int32` |
+
+Floating and boolean `dtype=` are accepted by `random_discrete_uniform` and
+`random_geometric` on every backend: the integers are drawn, then cast.
+`random_uniform` keeps results strictly below `high`, also when rounding to a
+low-precision dtype would otherwise produce `high`.
 
 With an integer `dtype=`, `random_discrete_uniform` raises an error if the bounds do
 not fit the dtype: `ValueError` on NumPy, `RuntimeError` on PyTorch. Asking for the
