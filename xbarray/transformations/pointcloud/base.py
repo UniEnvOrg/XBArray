@@ -60,80 +60,61 @@ def bilinear_interpolate(
         BArrayType: The interpolated values of shape (..., N, C).
     """
     H, W = values.shape[-3], values.shape[-2]
-    x = pixel_coordinates[..., 0]  # (..., N)
-    y = pixel_coordinates[..., 1]  # (..., N)
 
     index_dtype = index_dtype if index_dtype is not None else (pixel_coordinates.dtype if backend.dtype_is_real_integer(pixel_coordinates.dtype) else backend.default_index_dtype)
+    # Weights (and the result) are floating point even for integer images
+    if backend.dtype_is_real_floating(values.dtype):
+        weight_dtype = values.dtype
+    elif backend.dtype_is_real_floating(pixel_coordinates.dtype):
+        weight_dtype = pixel_coordinates.dtype
+    else:
+        weight_dtype = backend.default_floating_dtype
 
+    x = backend.astype(pixel_coordinates[..., 0], weight_dtype)  # (..., N)
+    y = backend.astype(pixel_coordinates[..., 1], weight_dtype)  # (..., N)
     x = backend.clip(x, 0, W - 1)
     y = backend.clip(y, 0, H - 1)
-    x0 = backend.astype(backend.floor(x), index_dtype)
+    # x0 <= W - 2 so that x1 = x0 + 1 is a different pixel: on the last column the
+    # whole weight goes to x1 (fx = 1) instead of every weight being 0.
+    x0 = backend.astype(backend.clip(backend.floor(x), 0, max(W - 2, 0)), index_dtype)
     x1 = backend.astype(backend.clip(x0 + 1, max=W - 1), index_dtype)
-    y0 = backend.astype(backend.floor(y), index_dtype)
+    y0 = backend.astype(backend.clip(backend.floor(y), 0, max(H - 2, 0)), index_dtype)
     y1 = backend.astype(backend.clip(y0 + 1, max=H - 1), index_dtype)
+    fx = x - backend.astype(x0, weight_dtype)  # (..., N), in [0, 1]
+    fy = y - backend.astype(y0, weight_dtype)  # (..., N), in [0, 1]
 
     pc00 = backend.stack([x0, y0], axis=-1)  # (..., N, 2)
     pc01 = backend.stack([x0, y1], axis=-1)  # (..., N, 2)
     pc10 = backend.stack([x1, y0], axis=-1)  # (..., N, 2)
     pc11 = backend.stack([x1, y1], axis=-1)  # (..., N, 2)
     all_queries = backend.concat([pc00, pc01, pc10, pc11], axis=-2)  # (..., 4 * N, 2)
-    gathered_values = gather_pixel_value(
+    gathered_values = backend.astype(gather_pixel_value(
         backend,
         values,
         all_queries
-    )  # (..., 4 * N, C)
-    values_00 = gathered_values[..., :gathered_values.shape[-2] // 4, :]  # (..., N, C)
-    values_01 = gathered_values[..., gathered_values.shape[-2] // 4:2 * gathered_values.shape[-2] // 4, :]  # (..., N, C)
-    values_10 = gathered_values[..., 2 * gathered_values.shape[-2] // 4:3 * gathered_values.shape[-2] // 4, :]  # (..., N, C)
-    values_11 = gathered_values[..., 3 * gathered_values.shape[-2] // 4:, :]  # (..., N, C)
-    
-    weight_00 = backend.all(backend.logical_not(backend.isnan(values_00)), axis=-1)  # (..., N)
-    weight_01 = backend.all(backend.logical_not(backend.isnan(values_01)), axis=-1)  # (..., N)
-    weight_10 = backend.all(backend.logical_not(backend.isnan(values_10)), axis=-1)  # (..., N)
-    weight_11 = backend.all(backend.logical_not(backend.isnan(values_11)), axis=-1)  # (..., N)
-    values_00 = backend.where(
-        weight_00[..., None],
-        values_00,
-        0
-    )  # (..., N, C)
-    values_01 = backend.where(
-        weight_01[..., None],
-        values_01,
-        0
-    )  # (..., N, C)
-    values_10 = backend.where(
-        weight_10[..., None],
-        values_10,
-        0
-    )  # (..., N, C)
-    values_11 = backend.where(
-        weight_11[..., None],
-        values_11,
-        0
-    )  # (..., N, C)
-    weight_00 = backend.astype(weight_00, values.dtype)  # (..., N)
-    weight_01 = backend.astype(weight_01, values.dtype)  # (..., N)
-    weight_10 = backend.astype(weight_10, values.dtype)  # (..., N)
-    weight_11 = backend.astype(weight_11, values.dtype)  # (..., N)
+    ), weight_dtype)  # (..., 4 * N, C)
+    N = gathered_values.shape[-2] // 4
+    corner_values = [gathered_values[..., i * N:(i + 1) * N, :] for i in range(4)]  # 00, 01, 10, 11; each (..., N, C)
 
-    if not uniform_weights:
-        weight_00 *= (x1 - x) * (y1 - y)
-        weight_01 *= (x1 - x) * (y - y0)
-        weight_10 *= (x - x0) * (y1 - y)
-        weight_11 *= (x - x0) * (y - y0)
-    weights_sum = weight_00 + weight_01 + weight_10 + weight_11  # (..., N)
-    weights_sum = backend.clip(weights_sum, min=1e-6)
-    weight_00 /= weights_sum
-    weight_01 /= weights_sum
-    weight_10 /= weights_sum
-    weight_11 /= weights_sum
-    interpolated_values = (
-        values_00 * weight_00[..., None] +
-        values_01 * weight_01[..., None] +
-        values_10 * weight_10[..., None] +
-        values_11 * weight_11[..., None]
-    )  # (..., N, C)
-    return interpolated_values
+    if uniform_weights:
+        corner_weights = [backend.ones_like(fx)] * 4
+    else:
+        corner_weights = [(1 - fx) * (1 - fy), (1 - fx) * fy, fx * (1 - fy), fx * fy]  # (..., N) each
+
+    interpolated_values = None
+    weights_sum = None
+    weighted = []
+    for corner_value, corner_weight in zip(corner_values, corner_weights):
+        corner_valid = backend.all(backend.logical_not(backend.isnan(corner_value)), axis=-1)  # (..., N)
+        corner_value = backend.where(corner_valid[..., None], corner_value, backend.zeros_like(corner_value))
+        corner_weight = corner_weight * backend.astype(corner_valid, weight_dtype)
+        weighted.append((corner_value, corner_weight))
+        weights_sum = corner_weight if weights_sum is None else weights_sum + corner_weight
+    weights_sum = backend.clip(weights_sum, min=1e-6)  # (..., N)
+    for corner_value, corner_weight in weighted:
+        term = corner_value * (corner_weight / weights_sum)[..., None]
+        interpolated_values = term if interpolated_values is None else interpolated_values + term
+    return interpolated_values  # (..., N, C)
 
 def pixel_coordinate_and_depth_to_world(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
@@ -158,12 +139,14 @@ def pixel_coordinate_and_depth_to_world(
     xs_norm = (xs - intrinsic_matrix[..., None, 0, 2]) / intrinsic_matrix[..., None, 0, 0]  # (..., N)
     ys_norm = (ys - intrinsic_matrix[..., None, 1, 2]) / intrinsic_matrix[..., None, 1, 1]  # (..., N)
 
+    # Pixel coordinates, intrinsics and depth may have different (broadcastable) batch shapes
+    xs_norm, ys_norm, depth = backend.broadcast_arrays(xs_norm, ys_norm, depth)
     camera_coords = backend.stack([
         xs_norm,
         ys_norm,
         backend.ones_like(depth)
     ], axis=-1) # (..., N, 3)
-    camera_coords *= depth[..., None]  # (..., N, 3)
+    camera_coords = camera_coords * depth[..., None]  # (..., N, 3)
 
     if extrinsic_matrix is not None:
         R = extrinsic_matrix[..., :3, :3]  # (..., 3, 3)
@@ -178,9 +161,10 @@ def pixel_coordinate_and_depth_to_world(
         backend.isnan(depth),
         depth <= 0
     )) # (..., N)
+    valid_depth_mask = backend.broadcast_to(valid_depth_mask, tuple(world_coords.shape[:-1]))
     return backend.concat([
         world_coords,
-        valid_depth_mask[..., None]
+        backend.astype(valid_depth_mask, world_coords.dtype)[..., None]
     ], axis=-1) # (..., N, 4)
 
 def depth_image_to_world(
@@ -216,8 +200,42 @@ def depth_image_to_world(
         intrinsic_matrix,
         extrinsic_matrix
     ) # (..., H * W, 4)
-    world_coords = backend.reshape(world_coords, list(depth_image.shape[:-2]) + [H, W, 4]) # (..., H, W, 4)
+    world_coords = backend.reshape(world_coords, list(world_coords.shape[:-2]) + [H, W, 4]) # (..., H, W, 4)
     return world_coords
+
+def _world_to_camera(
+    backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
+    world_coords : BArrayType,
+    extrinsic_matrix : Optional[BArrayType] = None
+) -> Tuple[BArrayType, Optional[BArrayType]]:
+    """
+    Camera coordinates (..., N, 3) of world points (..., N, 3) or (..., N, 4), where the 4th column
+    is a valid mask (nonzero = valid), and that mask as booleans (None for 3 columns).
+    """
+    if world_coords.shape[-1] == 3:
+        points = world_coords
+        valid = None
+    else:
+        assert world_coords.shape[-1] == 4
+        points = world_coords[..., :3]
+        valid = world_coords[..., 3] != 0  # (..., N)
+    if extrinsic_matrix is None:
+        return points, valid
+    # Homogeneous coordinates: the 4th coordinate is 1, not the valid mask
+    world_coords_h = backend.pad_dim(
+        points,
+        dim=-1,
+        target_size=4,
+        value=1
+    ) # (..., N, 4)
+    camera_coords = backend.matmul(
+        extrinsic_matrix, # (..., 3, 4) or (..., 4, 4)
+        backend.matrix_transpose(world_coords_h) # (..., 4, N)
+    ) # (..., 3, N) or (..., 4, N)
+    camera_coords = backend.matrix_transpose(camera_coords) # (..., N, 3) or (..., N, 4)
+    if camera_coords.shape[-1] == 4:
+        camera_coords = camera_coords[..., :3] / camera_coords[..., 3:4]
+    return camera_coords, valid
 
 def world_to_pixel_coordinate_and_depth(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType],
@@ -236,27 +254,7 @@ def world_to_pixel_coordinate_and_depth(
         BArrayType: The pixel coordinates xy of shape (..., N, 2). 
         BArrayType: The depth values of shape (..., N). Invalid points (where valid mask is False) will have depth 0.
     """
-    if world_coords.shape[-1] == 3:
-        world_coords_h = backend.pad_dim(
-            world_coords,
-            dim=-1,
-            target_size=4,
-            value=1
-        )
-    else:
-        assert world_coords.shape[-1] == 4
-        world_coords_h = world_coords
-    
-    if extrinsic_matrix is not None:
-        camera_coords = backend.matmul(
-            extrinsic_matrix, # (..., 3, 4) or (..., 4, 4)
-            backend.matrix_transpose(world_coords_h) # (..., 4, N)
-        ) # (..., 3, N) or (..., 4, N)
-        camera_coords = backend.matrix_transpose(camera_coords) # (..., N, 3) or (..., N, 4)
-        if camera_coords.shape[-1] == 4:
-            camera_coords = camera_coords[..., :3] / camera_coords[..., 3:4]
-    else:
-        camera_coords = world_coords_h[..., :3] # (..., N, 3)
+    camera_coords, valid = _world_to_camera(backend, world_coords, extrinsic_matrix) # (..., N, 3)
     
     point_px_homogeneous = backend.matmul(
         intrinsic_matrix, # (..., 3, 3)
@@ -267,6 +265,8 @@ def world_to_pixel_coordinate_and_depth(
 
     depth = camera_coords[..., 2] # (..., N)
     depth_valid = depth > 0
+    if valid is not None:
+        depth_valid = backend.logical_and(depth_valid, valid)
     depth = backend.where(depth_valid, depth, 0)
     point_px = backend.where(
         depth_valid[..., None],
@@ -282,7 +282,7 @@ def world_to_depth(
     extrinsic_matrix : Optional[BArrayType] = None
 ) -> BArrayType:
     """
-    Convert world coordinates to pixel coordinates and depth.
+    Convert world coordinates to depth.
     Args:
         backend (ComputeBackend): The compute backend to use.
         world_coords (BArrayType): The world coordinates of shape (..., N, 3) or (..., N, 4). If the last dimension is 4, the last element is treated as a valid mask.
@@ -290,29 +290,11 @@ def world_to_depth(
     Returns:
         BArrayType: The depth values of shape (..., N). Invalid points (where valid mask is False) will have depth 0.
     """
-    if world_coords.shape[-1] == 3:
-        world_coords_h = backend.pad_dim(
-            world_coords,
-            dim=-1,
-            value=0
-        )
-    else:
-        assert world_coords.shape[-1] == 4
-        world_coords_h = world_coords
-    
-    if extrinsic_matrix is not None:
-        camera_coords = backend.matmul(
-            extrinsic_matrix, # (..., 3, 4) or (..., 4, 4)
-            backend.matrix_transpose(world_coords_h) # (..., 4, N)
-        ) # (..., 3, N) or (..., 4, N)
-        camera_coords = backend.matrix_transpose(camera_coords) # (..., N, 3) or (..., N, 4)
-        if camera_coords.shape[-1] == 4:
-            camera_coords = camera_coords[..., :3] / camera_coords[..., 3:4]
-    else:
-        camera_coords = world_coords_h[..., :3] # (..., N, 3)
-    
+    camera_coords, valid = _world_to_camera(backend, world_coords, extrinsic_matrix) # (..., N, 3)
     depth = camera_coords[..., 2] # (..., N)
     depth_valid = depth > 0
+    if valid is not None:
+        depth_valid = backend.logical_and(depth_valid, valid)
     depth = backend.where(depth_valid, depth, 0)
     return depth
 
