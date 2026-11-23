@@ -11,7 +11,7 @@
 # Please see https://github.com/facebookresearch/pytorch3d/issues/2002 for some issues involving axis angle rotations
 # --------------------------
 
-from typing import Optional
+from typing import Optional, Tuple
 from xbarray.backends.base import ComputeBackend, BArrayType, BDeviceType, BDtypeType, BRNGType
 
 __all__ = [
@@ -307,31 +307,48 @@ def matrix_to_euler_angles(
     i0 = _index_from_letter(convention[0])
     i2 = _index_from_letter(convention[2])
     tait_bryan = i0 != i2
+    # Row i0 of the matrix does not depend on the first angle; it holds sin/cos of the central angle.
+    row = matrix[..., i0, :]
     if tait_bryan:
-        central_angle = backend.asin(
-            backend.clip(matrix[..., i0, i2], -1.0, 1.0)
-            * (-1.0 if i0 - i2 in [-1, 2] else 1.0)
-        )
+        k0, k1 = [k for k in range(3) if k != i2]
+        sin_central = row[..., i2] * (-1.0 if i0 - i2 in [-1, 2] else 1.0)
+        cos_central = backend.hypot(row[..., k0], row[..., k1])  # >= 0
+        # atan2 stays accurate near +-pi/2, where asin loses half the digits
+        central_angle = backend.atan2(sin_central, cos_central)
+        gimbal_measure = cos_central
     else:
-        central_angle = backend.acos(backend.clip(matrix[..., i0, i0], -1.0, 1.0))
+        k0, k1 = [k for k in range(3) if k != i0]
+        cos_central = row[..., i0]
+        sin_central = backend.hypot(row[..., k0], row[..., k1])  # >= 0
+        central_angle = backend.atan2(sin_central, cos_central)
+        gimbal_measure = sin_central
 
-    o = (
-        _angle_from_tan(
-            backend,
-            convention[0], convention[1], matrix[..., i2], False, tait_bryan
-        ),
-        central_angle,
-        _angle_from_tan(
-            backend,
-            convention[2], convention[1], matrix[..., i0, :], True, tait_bryan
-        ),
+    # At gimbal lock only the sum (or difference) of the first and third angles is defined:
+    # like scipy, set the third angle to zero there.
+    gimbal_lock = gimbal_measure <= 16 * backend.finfo(matrix.dtype).eps
+    third_angle = _angle_from_tan(
+        backend,
+        convention[2], convention[1], matrix[..., i0, :], True, tait_bryan
     )
-    return backend.stack(o, -1)
+    third_angle = backend.where(gimbal_lock, backend.zeros_like(third_angle), third_angle)
+
+    # The first angle is then read from R_first = M @ R_third^T @ R_central^T, which keeps
+    # the three angles consistent with the input matrix even at (or near) gimbal lock.
+    first_rotation = backend.matmul(
+        backend.matmul(
+            matrix,
+            backend.matrix_transpose(_axis_angle_rotation(backend, convention[2], third_angle)),
+        ),
+        backend.matrix_transpose(_axis_angle_rotation(backend, convention[1], central_angle)),
+    )
+    j, k = (i0 + 1) % 3, (i0 + 2) % 3
+    first_angle = backend.atan2(first_rotation[..., k, j], first_rotation[..., j, j])
+    return backend.stack((first_angle, central_angle, third_angle), axis=-1)
 
 def random_quaternions(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType], rng : BRNGType,
     n: int, dtype: Optional[BDtypeType] = None, device: Optional[BDeviceType] = None,
-) -> BArrayType:
+) -> Tuple[BRNGType, BArrayType]:
     """
     Generate random quaternions representing rotations,
     i.e. versors with nonnegative real part.
@@ -345,18 +362,19 @@ def random_quaternions(
             uses the current device for the default tensor type.
 
     Returns:
-        Quaternions as tensor of shape (N, 4).
+        The updated random number generator, and
+        quaternions (real part first) as tensor of shape (N, 4).
     """
-    o = backend.random.random_normal((n, 4), rng=rng, dtype=dtype, device=device)
+    rng, o = backend.random.random_normal((n, 4), rng=rng, dtype=dtype, device=device)
     s = backend.sum(o * o, axis=1)
     o = o / _copysign(backend, backend.sqrt(s), o[:, 0])[:, None]
-    return o
+    return rng, o
 
 
 def random_rotations(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType], rng : BRNGType,
     n: int, dtype: Optional[BDtypeType] = None, device: Optional[BDeviceType] = None
-) -> BArrayType:
+) -> Tuple[BRNGType, BArrayType]:
     """
     Generate random rotations as 3x3 rotation matrices.
 
@@ -369,16 +387,17 @@ def random_rotations(
             uses the current device for the default tensor type.
 
     Returns:
-        Rotation matrices as tensor of shape (n, 3, 3).
+        The updated random number generator, and
+        rotation matrices as tensor of shape (n, 3, 3).
     """
-    quaternions = random_quaternions(backend, rng, n, dtype=dtype, device=device)
-    return quaternion_to_matrix(backend, quaternions)
+    rng, quaternions = random_quaternions(backend, rng, n, dtype=dtype, device=device)
+    return rng, quaternion_to_matrix(backend, quaternions)
 
 
 def random_rotation(
     backend : ComputeBackend[BArrayType, BDeviceType, BDtypeType, BRNGType], rng : BRNGType,
     dtype: Optional[BDtypeType] = None, device: Optional[BDeviceType] = None
-) -> BArrayType:
+) -> Tuple[BRNGType, BArrayType]:
     """
     Generate a single random 3x3 rotation matrix.
 
@@ -390,9 +409,11 @@ def random_rotation(
             uses the current device for the default tensor type
 
     Returns:
-        Rotation matrix as tensor of shape (3, 3).
+        The updated random number generator, and
+        a rotation matrix as tensor of shape (3, 3).
     """
-    return random_rotations(backend, rng, 1, dtype, device)[0]
+    rng, rotations = random_rotations(backend, rng, 1, dtype, device)
+    return rng, rotations[0]
 
 
 def standardize_quaternion(
@@ -477,7 +498,7 @@ def quaternion_invert(
     """
 
     scaling = backend.reshape(
-        backend.asarray([1, -1, -1, -1], device=backend.device(quaternion)),
+        backend.asarray([1, -1, -1, -1], dtype=quaternion.dtype, device=backend.device(quaternion)),
         [1] * (len(quaternion.shape) - 1) + [4]
     )
     return quaternion * scaling
@@ -549,7 +570,7 @@ def axis_angle_to_matrix(
     angles_sqrd = angles * angles
     angles_sqrd = backend.where(angles_sqrd == 0, 1, angles_sqrd)
     return (
-        backend.reshape(identity, [1] * (len(shape) - 1) + (3,3))
+        backend.reshape(identity, (1,) * (len(shape) - 1) + (3, 3))
         + backend.sinc(angles / backend.pi) * cross_product_matrix
         + ((1 - backend.cos(angles)) / angles_sqrd) * cross_product_matrix_sqrd
     )
@@ -589,30 +610,32 @@ def matrix_to_axis_angle(
             matrix[..., 1, 0] - matrix[..., 0, 1],
         ],
         axis=-1,
-    )
+    )  # 2 sin(angle) * axis
     norms = backend.linalg.vector_norm(omegas, ord=2, axis=-1, keepdims=True)
     traces = backend.sum(backend.linalg.diagonal(matrix), axis=-1, keepdims=True)
-    angles = backend.atan2(norms, traces - 1)
+    angles = backend.atan2(norms, traces - 1)  # (..., 1), in [0, pi]
 
-    zeros = backend.zeros(3, dtype=matrix.dtype, device=backend.device(matrix))
-    omegas = backend.where(backend.isclose(angles, 0), zeros, omegas)
+    # Small angles: axis * angle = omegas / (2 sinc(angle)), well conditioned while sin(angle) is not small.
+    small = angles <= backend.pi / 2
+    sinc = backend.sinc(angles / backend.pi)
+    small_result = 0.5 * omegas / backend.where(small, sinc, backend.ones_like(sinc))
 
-    near_pi = backend.isclose(angles, backend.pi)[..., 0]
+    # Large angles: the symmetric part gives (R + R^T) / 2 - cos(angle) I = (1 - cos(angle)) n n^T,
+    # whose row with the largest diagonal entry is proportional to the axis n (exact up to pi).
+    # The sign of n comes from omegas (it does not matter at exactly pi).
+    cos_angles = (traces - 1) * 0.5
+    eye = backend.eye(3, dtype=matrix.dtype, device=backend.device(matrix))
+    sym = 0.5 * (matrix + backend.matrix_transpose(matrix)) - cos_angles[..., None] * eye
+    row_index = backend.argmax(backend.linalg.diagonal(sym), axis=-1)
+    gather_index = backend.broadcast_to(row_index[..., None, None], tuple(sym.shape[:-2]) + (1, 3))
+    axis = backend.take_along_axis(sym, gather_index, axis=-2)[..., 0, :]
+    axis_norm = backend.linalg.vector_norm(axis, ord=2, axis=-1, keepdims=True)
+    axis = axis / backend.where(axis_norm > 0, axis_norm, backend.ones_like(axis_norm))
+    flip = backend.sum(axis * omegas, axis=-1, keepdims=True) < 0
+    axis = backend.where(flip, -axis, axis)
+    large_result = angles * axis
 
-    axis_angles = backend.empty_like(omegas)
-    axis_angles = backend.at(axis_angles, backend.logical_not(near_pi)).set(
-        0.5 * omegas[~near_pi] / backend.sinc(angles[~near_pi] / backend.pi)
-    )
-
-    # this derives from: nnT = (R + 1) / 2
-    n = 0.5 * (
-        matrix[near_pi][..., 0, :]
-        + backend.eye(1, 3, dtype=matrix.dtype, device=backend.device(matrix))
-    )
-    # TODO(Yunhao): The original pytorch3d file contains `torch.norm` which ignores batch shape, not sure if this is exactly what we wanted
-    axis_angles[near_pi] = angles[near_pi] * n / backend.linalg.vector_norm(n, axis=-1, keepdims=True, ord=2)
-
-    return axis_angles
+    return backend.where(small, small_result, large_result)
 
 
 def axis_angle_to_quaternion(
@@ -657,6 +680,9 @@ def quaternion_to_axis_angle(
             turned anticlockwise in radians around the vector's
             direction.
     """
+    # q and -q are the same rotation: use the one with a nonnegative real part, so the
+    # angle is in [0, pi] (otherwise it is near 2 pi and loses precision, or 0 / 0 at -1)
+    quaternions = standardize_quaternion(backend, quaternions)
     norms = backend.linalg.vector_norm(quaternions[..., 1:], ord=2, axis=-1, keepdims=True)
     half_angles = backend.atan2(norms, quaternions[..., :1])
     sin_half_angles_over_angles = 0.5 * backend.sinc(half_angles / backend.pi)
