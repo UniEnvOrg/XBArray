@@ -2,142 +2,142 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/SUMMARY/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/getting-started/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/jax/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/numpy/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/pytorch/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/backends/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/backends/base/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/backends/jax/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/backends/numpy/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/backends/pytorch/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/backends/utils/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/pointcloud/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/pointcloud/base/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/pointcloud/jax/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/pointcloud/numpy/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/pointcloud/pytorch/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/rotation_conversions/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/rotation_conversions/base/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/rotation_conversions/jax/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/rotation_conversions/numpy/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/api/xbarray/transformations/rotation_conversions/pytorch/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/concepts/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/concepts/backends/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/concepts/devices-and-dtypes/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/concepts/interop/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/concepts/random/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/concepts/typing/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/guides/backend-agnostic-code/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/guides/development/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/guides/point-clouds/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
     <url>
          <loc>https://unienvorg.github.io/XBArray/dev/guides/rotation-conversions/</loc>
-         <lastmod>2026-11-17</lastmod>
+         <lastmod>2026-11-23</lastmod>
     </url>
 </urlset>

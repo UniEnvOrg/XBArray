@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../../unienv/favicon.svg">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.2">
     
     
       
@@ -2044,7 +2044,7 @@
               <td><code><a class="autorefs autorefs-internal" title="            world_to_depth (xbarray.transformations.pointcloud.world_to_depth)" href="#xbarray.transformations.pointcloud.world_to_depth">world_to_depth</a></code></td>
               <td>
                 <div class="doc-md-description">
-                  <p>Convert world coordinates to pixel coordinates and depth.</p>
+                  <p>Convert world coordinates to depth.</p>
                 </div>
               </td>
             </tr>
@@ -2516,7 +2516,7 @@ Returns:
 
     <div class="doc doc-contents ">
 
-        <p>Convert world coordinates to pixel coordinates and depth.
+        <p>Convert world coordinates to depth.
 Args:
     backend (ComputeBackend): The compute backend to use.
     world_coords (BArrayType): The world coordinates of shape (..., N, 3) or (..., N, 4). If the last dimension is 4, the last element is treated as a valid mask.
