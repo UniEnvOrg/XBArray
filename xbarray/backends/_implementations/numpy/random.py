@@ -19,6 +19,13 @@ _FLOAT32_MAX = float(np.finfo(_FLOAT32).max)
 # than drawing float64 with `Generator.uniform` and casting.
 _MIN_SIZE_FOR_FLOAT32_AFFINE = 128
 
+def _below_high(t : ARRAY_TYPE, low : float, high : float) -> ARRAY_TYPE:
+    """Keep ``t`` in ``[low, high)``: scaling and casting can round a value up to ``high`` itself."""
+    if high > low and isinstance(t, np.ndarray) and t.dtype.kind == "f":
+        largest = np.nextafter(np.asarray(high, dtype=t.dtype), np.asarray(low, dtype=t.dtype))
+        np.minimum(t, largest, out=t)
+    return t
+
 def random_number_generator(
     seed : Optional[int] = None,
     *,
@@ -66,11 +73,11 @@ def random_uniform(
             t = rng.random(size=shape, dtype=np.float32)
             t *= high - low
             t += low
-            return rng, t
+            return rng, _below_high(t, low, high)
     t = rng.uniform(low, high, size=shape)
     if dtype is not None:
         t = t.astype(dtype, copy=False)
-    return rng, t
+    return rng, _below_high(t, low, high)
 
 def random_exponential(
     shape: Union[int, Tuple[int, ...]], 

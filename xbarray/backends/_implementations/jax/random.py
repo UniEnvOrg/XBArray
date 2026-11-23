@@ -21,15 +21,22 @@ def _as_shape(shape : Union[int, Tuple[int, ...]]) -> Tuple[int, ...]:
     except TypeError:
         return tuple(operator.index(dim) for dim in shape)
 
+def _is_integer_dtype(dtype : Optional[DTYPE_TYPE]) -> bool:
+    return dtype is None or np.dtype(dtype).kind in "iu"
+
 def random_number_generator(
     seed : Optional[int] = None,
     *,
     device : Optional[DEVICE_TYPE] = None
 ) -> RNG_TYPE:
-    rng_seed = np.random.randint(65535) if seed is None else seed
+    # Unseeded: draw a 32-bit seed from numpy's global generator (so np.random.seed still
+    # makes it reproducible), not one of only 65535 seeds
+    rng_seed = int(np.random.randint(2 ** 32, dtype=np.uint64)) if seed is None else seed
     rng = jax.random.key(
         seed=rng_seed
     )
+    if device is not None:
+        rng = jax.device_put(rng, device)
     return rng
 
 def random_discrete_uniform(
@@ -57,7 +64,11 @@ def random_discrete_uniform(
                 if np_dtype.kind == "i":
                     t = jax.lax.bitcast_convert_type(t, np_dtype)
     if t is None:
-        t = jax.random.randint(rng, _as_shape(shape), minval=from_num, maxval=to_num, dtype=dtype or int)
+        if _is_integer_dtype(dtype):
+            t = jax.random.randint(rng, _as_shape(shape), minval=from_num, maxval=to_num, dtype=dtype or int)
+        else:
+            # randint only produces integers: draw them, then cast (bool / floating dtypes, like numpy and PyTorch)
+            t = jax.random.randint(rng, _as_shape(shape), minval=from_num, maxval=to_num, dtype=int).astype(dtype)
     if device is not None:
         t = jax.device_put(t, device)
     return new_rng, t
@@ -73,6 +84,10 @@ def random_uniform(
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     new_rng, rng = jax.random.split(rng)
     data = jax.random.uniform(rng, _as_shape(shape), dtype=dtype or float, minval=low, maxval=high)
+    if (low != 0.0 or high != 1.0) and high > low:
+        # Rounding can turn the largest draws into `high` itself: keep the interval half-open
+        largest = jax.numpy.nextafter(jax.numpy.asarray(high, dtype=data.dtype), jax.numpy.asarray(low, dtype=data.dtype))
+        data = jax.numpy.minimum(data, largest)
     if device is not None:
         data = jax.device_put(data, device)
     return new_rng, data
@@ -117,7 +132,10 @@ def random_geometric(
     device: Optional[Any] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     new_rng, rng = jax.random.split(rng)
-    data = jax.random.geometric(rng, p=p, shape=_as_shape(shape), dtype=dtype or int)
+    if _is_integer_dtype(dtype):
+        data = jax.random.geometric(rng, p=p, shape=_as_shape(shape), dtype=dtype or int)
+    else:
+        data = jax.random.geometric(rng, p=p, shape=_as_shape(shape), dtype=int).astype(dtype)
     if device is not None:
         data = jax.device_put(data, device)
     return new_rng, data
@@ -131,7 +149,10 @@ def random_permutation(
     device: Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     new_rng, rng = jax.random.split(rng)
-    data = jax.random.permutation(rng, n, dtype=dtype or int)
+    # jax.random.permutation has no dtype argument
+    data = jax.random.permutation(rng, n)
+    if dtype is not None:
+        data = data.astype(dtype)
     if device is not None:
         data = jax.device_put(data, device)
     return new_rng, data

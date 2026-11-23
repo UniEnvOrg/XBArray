@@ -45,6 +45,10 @@ def _random_bits(
     )
     return words.view(dtype)[:n].reshape(shape)
 
+def _device(rng : RNG_TYPE, device : Optional[DEVICE_TYPE]) -> DEVICE_TYPE:
+    """Draw on the generator's device unless a device is given (a CUDA generator cannot fill CPU tensors)."""
+    return rng.device if device is None else device
+
 def random_number_generator(
     seed : Optional[int] = None,
     *,
@@ -55,6 +59,10 @@ def random_number_generator(
     )
     if seed is not None:
         rng = rng.manual_seed(seed)
+    else:
+        # A new torch.Generator always starts from the same fixed seed: draw a fresh one
+        # (like numpy's default_rng(None)).
+        rng.seed()
     return rng
 
 
@@ -69,6 +77,7 @@ def random_discrete_uniform(
     device : Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
     from_num, to_num = int(from_num), int(to_num)
+    device = _device(rng, device)
     if dtype in _FULL_RANGE_DTYPES:
         info = torch.iinfo(dtype)
         if from_num == info.min and to_num == info.max + 1:
@@ -85,10 +94,17 @@ def random_uniform(
     dtype : Optional[DTYPE_TYPE] = None, 
     device : Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
-    t = torch.rand(_as_shape(shape), generator=rng, dtype=dtype, device=device)
+    t = torch.rand(_as_shape(shape), generator=rng, dtype=dtype, device=_device(rng, device))
     if low != 0.0 or high != 1.0:
         # Two scalar ops cost ~3x the draw itself for small tensors: skip them for [0, 1)
         t = t * (high - low) + low
+        if high > low:
+            # Rounding can turn the largest draws into `high` itself: keep the interval half-open
+            largest = torch.nextafter(
+                torch.tensor(high, dtype=t.dtype, device=t.device),
+                torch.tensor(low, dtype=t.dtype, device=t.device),
+            )
+            t = torch.minimum(t, largest)
     return rng, t
 
 def random_exponential(
@@ -100,7 +116,7 @@ def random_exponential(
     dtype : Optional[DTYPE_TYPE] = None, 
     device : Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
-    t = torch.empty(_as_shape(shape), dtype=dtype, device=device)
+    t = torch.empty(_as_shape(shape), dtype=dtype, device=_device(rng, device))
     t = t.exponential_(lambd, generator=rng)
     return rng, t
 
@@ -113,7 +129,7 @@ def random_normal(
     dtype : Optional[DTYPE_TYPE] = None, 
     device : Optional[Any] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
-    t = torch.normal(mean, std, _as_shape(shape), generator=rng, dtype=dtype, device=device)
+    t = torch.normal(mean, std, _as_shape(shape), generator=rng, dtype=dtype, device=_device(rng, device))
     return rng, t
 
 def random_geometric(
@@ -125,7 +141,8 @@ def random_geometric(
     dtype: Optional[DTYPE_TYPE] = None, 
     device: Optional[Any] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
-    t = torch.empty(_as_shape(shape), dtype=dtype, device=device)
+    # Number of trials (>= 1): an integer, like numpy and JAX
+    t = torch.empty(_as_shape(shape), dtype=torch.int64 if dtype is None else dtype, device=_device(rng, device))
     t = t.geometric_(p, generator=rng)
     return rng, t
 
@@ -137,5 +154,5 @@ def random_permutation(
     dtype: Optional[DTYPE_TYPE] = None,
     device: Optional[DEVICE_TYPE] = None
 ) -> Tuple[RNG_TYPE, ARRAY_TYPE]:
-    t = torch.randperm(n, generator=rng, dtype=dtype, device=device)
+    t = torch.randperm(n, generator=rng, dtype=torch.int64 if dtype is None else dtype, device=_device(rng, device))
     return rng, t
