@@ -116,20 +116,24 @@ abbreviate_array = get_abbreviate_array_function(
     func_dtype_is_real_integer=dtype_is_real_integer,
     func_dtype_is_boolean=dtype_is_boolean
 )
-def map_fn_over_arrays(
-    data : Any, func : Callable[[ARRAY_TYPE], ARRAY_TYPE]
-):
-    return jax.tree.map(
-        func,
+# Same traversal as the other backends (mappings, sequences, namedtuples, dataclasses; func is
+# applied to JAX arrays only); other registered pytrees are traversed with jax.tree.map.
+map_fn_over_arrays = get_map_fn_over_arrays_function(
+    is_backendarray=is_backendarray,
+    fallback=lambda data, func: jax.tree.map(
+        lambda x: func(x) if is_backendarray(x) else x,
         data
-    )
+    ),
+)
 
-def map_fn_over_arrays_ex(data : Any, *supp_data : Optional[Any], func : Callable[[ARRAY_TYPE, Optional[Any]], ARRAY_TYPE]):
-    return jax.tree.map(
-        func,
+map_fn_over_arrays_ex = get_map_fn_over_arrays_ex_function(
+    is_backendarray=is_backendarray,
+    fallback=lambda data, *supp_data, func: jax.tree.map(
+        lambda x, *s: func(x, *s) if is_backendarray(x) else x,
         data,
         *supp_data
-    )
+    ),
+)
 
 pad_dim = get_pad_dim_function(
     backend=compat_module,

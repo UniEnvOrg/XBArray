@@ -125,6 +125,15 @@ def _as_clip_bound(bound : Any, dtype : np.dtype, is_lower : bool) -> Any:
         return bound
     if bound_type is float and dtype.kind == "f":
         return bound
+    if bound_type is float and dtype.kind in "iu" and bound == bound:
+        # A float bound beyond the integer range can never be active (array_api_compat
+        # compares before casting): do not cast it, which would overflow
+        limits = _INTEGER_LIMITS.get(dtype)
+        if limits is None:
+            info = np.iinfo(dtype)
+            limits = _INTEGER_LIMITS[dtype] = (int(info.min), int(info.max))
+        if (bound <= limits[0]) if is_lower else (bound >= limits[1]):
+            return None
     if isinstance(bound, np.ndarray) and bound.dtype == dtype:
         return bound
     return np.asarray(bound, dtype=dtype)

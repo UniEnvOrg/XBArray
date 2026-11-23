@@ -22,6 +22,8 @@ def get_abbreviate_array_function(
         Abbreivates an array to a single element if possible.
         Or, if some dimensions are the same, abbreviates to a smaller array (but with the same number of dimensions).
         """
+        if any(dim == 0 for dim in array.shape):
+            return array  # nothing to abbreviate (and take() cannot index an empty axis)
         abbr_array = array
         idx = backend.zeros(1, dtype=default_integer_dtype, device=array_api_compat.device(abbr_array))
         for dim_i in range(len(array.shape)):
@@ -41,11 +43,23 @@ def get_abbreviate_array_function(
                     return bool(elem)
                 else:
                     raise ValueError(f"Abbreviated array element dtype must be a real floating or integer or boolean type, actual dtype: {elem.dtype}")
-        return array
+        return abbr_array
     return abbreviate_array
+
+def _is_namedtuple(data : Any) -> bool:
+    return isinstance(data, tuple) and hasattr(type(data), "_fields")
+
+def _is_dataclass_instance(data : Any) -> bool:
+    return dataclasses.is_dataclass(data) and not isinstance(data, type)
+
+def _rebuild_dataclass(data : Any, values : Mapping[str, Any]) -> Any:
+    # Shallow: nested dataclasses keep their type (dataclasses.asdict would turn them into dicts
+    # and deep-copy every array); fields with init=False are left as they are
+    return dataclasses.replace(data, **values)
 
 def get_map_fn_over_arrays_function(
     is_backendarray : Callable[[Any], bool],
+    fallback : Optional[Callable[[Any, Callable], Any]] = None,
 ):
     def map_fn_over_arrays(data : Any, func : Callable[[CompatArray], CompatArray]) -> Any:
         """
@@ -53,26 +67,34 @@ def get_map_fn_over_arrays_function(
         """
         if is_backendarray(data):
             return func(data)
+        elif _is_dataclass_instance(data):
+            return _rebuild_dataclass(data, {
+                f.name: map_fn_over_arrays(getattr(data, f.name), func)
+                for f in dataclasses.fields(data) if f.init
+            })
         elif isinstance(data, Mapping):
             ret = {k: map_fn_over_arrays(v, func) for k, v in data.items()}
             try:
                 return type(data)(**ret)  # try to keep the same mapping type
             except:
                 return ret
+        elif _is_namedtuple(data):
+            return type(data)(*(map_fn_over_arrays(v, func) for v in data))
         elif isinstance(data, Sequence) and not isinstance(data, (str, bytes)):
             ret = [map_fn_over_arrays(v, func) for v in data]
             try:
                 return type(data)(ret)  # try to keep the same sequence type
             except:
                 return ret
-        elif dataclasses.is_dataclass(data):
-            return type(data)(**map_fn_over_arrays(dataclasses.asdict(data), func))
+        elif fallback is not None:
+            return fallback(data, func)
         else:
             return data
     return map_fn_over_arrays
 
 def get_map_fn_over_arrays_ex_function(
     is_backendarray : Callable[[Any], bool],
+    fallback : Optional[Callable[..., Any]] = None,
 ):
     def map_fn_over_arrays_ex(data : Any, *supp_data : Optional[Any], func : Callable[[CompatArray, Optional[Any]], CompatArray]) -> Any:
         """
@@ -80,21 +102,29 @@ def get_map_fn_over_arrays_ex_function(
         """
         if is_backendarray(data):
             return func(data, *supp_data)
+        elif _is_dataclass_instance(data):
+            def supp_field(supp_data_i, name):
+                return getattr(supp_data_i, name) if _is_dataclass_instance(supp_data_i) else supp_data_i[name]
+            return _rebuild_dataclass(data, {
+                f.name: map_fn_over_arrays_ex(getattr(data, f.name), *(supp_field(s, f.name) for s in supp_data), func=func)
+                for f in dataclasses.fields(data) if f.init
+            })
         elif isinstance(data, Mapping):
             ret = {k: map_fn_over_arrays_ex(v, *(supp_data_i[k] for supp_data_i in supp_data), func=func) for k, v in data.items()}
             try:
                 return type(data)(**ret)  # try to keep the same mapping type
             except:
                 return ret
+        elif _is_namedtuple(data):
+            return type(data)(*(map_fn_over_arrays_ex(v, *(supp_data_i[i] for supp_data_i in supp_data), func=func) for i, v in enumerate(data)))
         elif isinstance(data, Sequence) and not isinstance(data, (str, bytes)):
             ret = [map_fn_over_arrays_ex(v, *(supp_data_i[i] for supp_data_i in supp_data), func=func) for i, v in enumerate(data)]
             try:
                 return type(data)(ret)  # try to keep the same sequence type
             except:
                 return ret
-        elif dataclasses.is_dataclass(data):
-            supp_data_next = [dataclasses.asdict(supp_data_i) if dataclasses.is_dataclass(supp_data_i) else supp_data_i for supp_data_i in supp_data]
-            return type(data)(**map_fn_over_arrays_ex(dataclasses.asdict(data), *supp_data_next, func=func))
+        elif fallback is not None:
+            return fallback(data, *supp_data, func=func)
         else:
             return data
     return map_fn_over_arrays_ex
