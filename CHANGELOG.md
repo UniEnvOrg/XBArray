@@ -2,7 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 1.0.0 (2026-11-23)
+
+First stable release.
 
 - Added `ball_query` to `transformations.pointcloud`: up to K points strictly within a radius, first in index order.
 - PyTorch: `farthest_point_sampling` (with a mask) and `ball_query` run as Triton kernels on CUDA for 3D float32 points when `triton` is installed; other inputs use the generic code.
