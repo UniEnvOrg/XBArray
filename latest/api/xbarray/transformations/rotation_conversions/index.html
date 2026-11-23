@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://unienvorg.github.io/XBArray/0.0.1a20/api/xbarray/transformations/rotation_conversions/">
+        <link rel="canonical" href="https://unienvorg.github.io/XBArray/1.0.0/api/xbarray/transformations/rotation_conversions/">
       
       
         <link rel="prev" href="../pointcloud/pytorch/">
@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../../../unienv/favicon.svg">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.2">
     
     
       
@@ -2866,12 +2866,17 @@ as tensor of shape (..., 4).</p>
   
       module-attribute
    (xbarray.backends.base.BDeviceType)" href="../../backends/base/#xbarray.backends.base.BDeviceType">BDeviceType</a></span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            BArrayType
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="typing.Tuple">Tuple</span></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" title="            BRNGType
 
 
   
       module-attribute
-   (xbarray.backends.base.BArrayType)" href="../../backends/base/#xbarray.backends.base.BArrayType">BArrayType</a></span>
+   (xbarray.backends.base.BRNGType)" href="../../backends/base/#xbarray.backends.base.BRNGType">BRNGType</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-internal" title="            BArrayType
+
+
+  
+      module-attribute
+   (xbarray.backends.base.BArrayType)" href="../../backends/base/#xbarray.backends.base.BArrayType">BArrayType</a></span><span class="p">]</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -3022,6 +3027,21 @@ uses the current device for the default tensor type.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
+                  <code><a class="autorefs autorefs-internal" title="            BRNGType
+
+
+  
+      module-attribute
+   (xbarray.backends.base.BRNGType)" href="../../backends/base/#xbarray.backends.base.BRNGType">BRNGType</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The updated random number generator, and</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
                   <code><a class="autorefs autorefs-internal" title="            BArrayType
 
 
@@ -3031,7 +3051,7 @@ uses the current device for the default tensor type.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Quaternions as tensor of shape (N, 4).</p>
+                <p>quaternions (real part first) as tensor of shape (N, 4).</p>
               </div>
             </td>
           </tr>
@@ -3092,12 +3112,17 @@ uses the current device for the default tensor type.</p>
   
       module-attribute
    (xbarray.backends.base.BDeviceType)" href="../../backends/base/#xbarray.backends.base.BDeviceType">BDeviceType</a></span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            BArrayType
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="typing.Tuple">Tuple</span></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" title="            BRNGType
 
 
   
       module-attribute
-   (xbarray.backends.base.BArrayType)" href="../../backends/base/#xbarray.backends.base.BArrayType">BArrayType</a></span>
+   (xbarray.backends.base.BRNGType)" href="../../backends/base/#xbarray.backends.base.BRNGType">BRNGType</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-internal" title="            BArrayType
+
+
+  
+      module-attribute
+   (xbarray.backends.base.BArrayType)" href="../../backends/base/#xbarray.backends.base.BArrayType">BArrayType</a></span><span class="p">]</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -3247,6 +3272,21 @@ uses the current device for the default tensor type.</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
+                  <code><a class="autorefs autorefs-internal" title="            BRNGType
+
+
+  
+      module-attribute
+   (xbarray.backends.base.BRNGType)" href="../../backends/base/#xbarray.backends.base.BRNGType">BRNGType</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The updated random number generator, and</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
                   <code><a class="autorefs autorefs-internal" title="            BArrayType
 
 
@@ -3256,7 +3296,7 @@ uses the current device for the default tensor type.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Rotation matrices as tensor of shape (n, 3, 3).</p>
+                <p>rotation matrices as tensor of shape (n, 3, 3).</p>
               </div>
             </td>
           </tr>
@@ -3316,12 +3356,17 @@ uses the current device for the default tensor type.</p>
   
       module-attribute
    (xbarray.backends.base.BDeviceType)" href="../../backends/base/#xbarray.backends.base.BDeviceType">BDeviceType</a></span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="            BArrayType
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><span title="typing.Tuple">Tuple</span></span><span class="p">[</span><span class="n"><a class="autorefs autorefs-internal" title="            BRNGType
 
 
   
       module-attribute
-   (xbarray.backends.base.BArrayType)" href="../../backends/base/#xbarray.backends.base.BArrayType">BArrayType</a></span>
+   (xbarray.backends.base.BRNGType)" href="../../backends/base/#xbarray.backends.base.BRNGType">BRNGType</a></span><span class="p">,</span> <span class="n"><a class="autorefs autorefs-internal" title="            BArrayType
+
+
+  
+      module-attribute
+   (xbarray.backends.base.BArrayType)" href="../../backends/base/#xbarray.backends.base.BArrayType">BArrayType</a></span><span class="p">]</span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -3455,6 +3500,21 @@ uses the current device for the default tensor type</p>
       <tbody>
           <tr class="doc-section-item">
             <td>
+                  <code><a class="autorefs autorefs-internal" title="            BRNGType
+
+
+  
+      module-attribute
+   (xbarray.backends.base.BRNGType)" href="../../backends/base/#xbarray.backends.base.BRNGType">BRNGType</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>The updated random number generator, and</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
                   <code><a class="autorefs autorefs-internal" title="            BArrayType
 
 
@@ -3464,7 +3524,7 @@ uses the current device for the default tensor type</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Rotation matrix as tensor of shape (3, 3).</p>
+                <p>a rotation matrix as tensor of shape (3, 3).</p>
               </div>
             </td>
           </tr>

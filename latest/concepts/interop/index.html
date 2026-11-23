@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://unienvorg.github.io/XBArray/0.0.1a20/concepts/interop/">
+        <link rel="canonical" href="https://unienvorg.github.io/XBArray/1.0.0/concepts/interop/">
       
       
         <link rel="prev" href="../devices-and-dtypes/">
@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../unienv/favicon.svg">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.2">
     
     
       
@@ -1961,11 +1961,11 @@ backend, into an array of the <code>target</code> backend:</p>
 <tbody>
 <tr>
 <td>PyTorch</td>
-<td><code>torch.from_dlpack(source.to_dlpack(data))</code></td>
+<td>From NumPy: <code>from_numpy(data)</code>. Otherwise <code>torch.from_dlpack(source.to_dlpack(data))</code>, cloned when the source is JAX</td>
 </tr>
 <tr>
 <td>JAX</td>
-<td><code>jax.dlpack.from_dlpack(source.to_dlpack(data))</code></td>
+<td>From host (CPU) data: <code>from_numpy(source.to_numpy(data))</code>, onto JAX's default device. Otherwise DLPack import of a copy made by the source library</td>
 </tr>
 <tr>
 <td>NumPy</td>
@@ -1974,8 +1974,12 @@ backend, into an array of the <code>target</code> backend:</p>
 </tbody>
 </table>
 <p><a href="https://dmlc.github.io/dlpack/latest/">DLPack</a> passes the buffer without a copy when
-both libraries support the array's device. <code>to_dlpack(x)</code> returns <code>x</code> itself on every backend, since
-NumPy arrays, PyTorch tensors and JAX arrays all implement <code>__dlpack__</code>.</p>
+both libraries support the array's device. <code>to_dlpack(x)</code> returns <code>x</code> itself on NumPy
+and JAX, and <code>x.detach()</code> on PyTorch, since NumPy arrays, PyTorch tensors and JAX
+arrays all implement <code>__dlpack__</code>. JAX arrays are immutable, so a conversion into or out
+of JAX copies the data: a later in-place write on the PyTorch or NumPy side cannot
+change a JAX array. Between NumPy and PyTorch the buffer is shared, as with
+<code>torch.from_numpy</code>.</p>
 <p>If you do not know the source backend, find it first:</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="kn">from</span><span class="w"> </span><span class="nn">xbarray</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_backend_from_tensor</span>
@@ -2008,32 +2012,12 @@ returns a structure of the same shape:</p>
 <a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="nb">print</span><span class="p">(</span><span class="n">backend</span><span class="o">.</span><span class="n">map_fn_over_arrays_ex</span><span class="p">(</span><span class="n">obs</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="n">func</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">,</span> <span class="n">s</span><span class="p">:</span> <span class="n">x</span> <span class="o">*</span> <span class="n">s</span><span class="p">))</span>
 <a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="c1"># {'pos': array([10., 20.]), 'vel': array([1.5, 2. ])}</span>
 </code></pre></div>
-<p>The two backend families walk the structure differently:</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">NumPy and PyTorch</label><label for="__tabbed_1_2">JAX</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<p>XBArray walks mappings, sequences (except <code>str</code> and <code>bytes</code>) and dataclasses.
-<code>func</code> is called only on arrays of this backend. Other values are returned
-unchanged. The function tries to rebuild each container with its original type
-and falls back to a <code>dict</code> or <code>list</code> if that fails. A <code>namedtuple</code>, for example,
-comes back as a <code>list</code>.</p>
-</div>
-<div class="tabbed-block">
-<p>XBArray calls <code>jax.tree.map</code>. Containers are whatever JAX treats as pytree nodes,
-and <code>func</code> is called on <strong>every leaf</strong>, including Python numbers and strings.
-In the first example above, <code>x * 2</code> on the string <code>"episode-0"</code> would give
-<code>"episode-0episode-0"</code>. Filter inside <code>func</code> if your data has non-array leaves:</p>
-<div class="language-python highlight"><pre><span></span><code><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">xbarray.backends.jax</span><span class="w"> </span><span class="kn">import</span> <span class="n">JaxComputeBackend</span> <span class="k">as</span> <span class="n">backend</span>
-<a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
-<a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">data</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"x"</span><span class="p">:</span> <span class="n">backend</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">2</span><span class="p">),</span> <span class="s2">"step"</span><span class="p">:</span> <span class="mi">3</span><span class="p">}</span>
-<a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="n">out</span> <span class="o">=</span> <span class="n">backend</span><span class="o">.</span><span class="n">map_fn_over_arrays</span><span class="p">(</span>
-<a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a>    <span class="n">data</span><span class="p">,</span> <span class="k">lambda</span> <span class="n">v</span><span class="p">:</span> <span class="n">v</span> <span class="o">*</span> <span class="mi">2</span> <span class="k">if</span> <span class="n">backend</span><span class="o">.</span><span class="n">is_backendarray</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">else</span> <span class="n">v</span>
-<a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="p">)</span>
-<a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="p">[</span><span class="s2">"step"</span><span class="p">])</span>  <span class="c1"># 3</span>
-</code></pre></div>
-</div>
-</div>
-</div>
+<p>XBArray walks mappings, sequences (except <code>str</code> and <code>bytes</code>), namedtuples and
+dataclasses on every backend. <code>func</code> is called only on arrays of this backend; other
+values are returned unchanged. Each container is rebuilt with its original type
+(falling back to a <code>dict</code> or <code>list</code> if that fails); dataclasses are rebuilt with
+<code>dataclasses.replace</code>, so nested dataclasses keep their types. On JAX, other
+registered pytree nodes are walked with <code>jax.tree.map</code>.</p>
 
 
 

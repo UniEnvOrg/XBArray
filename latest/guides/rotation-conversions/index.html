@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://unienvorg.github.io/XBArray/0.0.1a20/guides/rotation-conversions/">
+        <link rel="canonical" href="https://unienvorg.github.io/XBArray/1.0.0/guides/rotation-conversions/">
       
       
         <link rel="prev" href="../point-clouds/">
@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../unienv/favicon.svg">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.2">
     
     
       
@@ -2038,7 +2038,7 @@ and runs on all three backends.</p>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1">#  [ 1.  0.  0.]</span>
 <a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1">#  [ 0.  0.  1.]]</span>
 <a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>
-<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">matrix_to_euler_angles</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">"XYZ"</span><span class="p">))</span>   <span class="c1"># [-0.        0.        1.5707964]</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">matrix_to_euler_angles</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">"XYZ"</span><span class="p">))</span>   <span class="c1"># [0.        0.        1.5707964]</span>
 <a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">quaternion_to_axis_angle</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>        <span class="c1"># [0.        0.        1.5707963]</span>
 <a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">matrix_to_rotation_6d</span><span class="p">(</span><span class="n">R</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>     <span class="c1"># (6,)</span>
 </code></pre></div>
@@ -2056,7 +2056,7 @@ and runs on all three backends.</p>
 <a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="c1">#         [ 1.,  0.,  0.],</span>
 <a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="c1">#         [ 0.,  0.,  1.]])</span>
 <a id="__codelineno-1-12" name="__codelineno-1-12" href="#__codelineno-1-12"></a>
-<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">matrix_to_euler_angles</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">"XYZ"</span><span class="p">))</span>   <span class="c1"># tensor([-0.0000, 0.0000, 1.5708])</span>
+<a id="__codelineno-1-13" name="__codelineno-1-13" href="#__codelineno-1-13"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">matrix_to_euler_angles</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">"XYZ"</span><span class="p">))</span>   <span class="c1"># tensor([0.0000, 0.0000, 1.5708])</span>
 <a id="__codelineno-1-14" name="__codelineno-1-14" href="#__codelineno-1-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">quaternion_to_axis_angle</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>        <span class="c1"># tensor([0.0000, 0.0000, 1.5708])</span>
 <a id="__codelineno-1-15" name="__codelineno-1-15" href="#__codelineno-1-15"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">matrix_to_rotation_6d</span><span class="p">(</span><span class="n">R</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>     <span class="c1"># torch.Size([6])</span>
 </code></pre></div>
@@ -2074,7 +2074,7 @@ and runs on all three backends.</p>
 <a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="c1">#  [ 1.  0.  0.]</span>
 <a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="c1">#  [ 0.  0.  1.]]</span>
 <a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a>
-<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">matrix_to_euler_angles</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">"XYZ"</span><span class="p">))</span>   <span class="c1"># [-0.        0.        1.5707964]</span>
+<a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">matrix_to_euler_angles</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="s2">"XYZ"</span><span class="p">))</span>   <span class="c1"># [0.        0.        1.5707964]</span>
 <a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">quaternion_to_axis_angle</span><span class="p">(</span><span class="n">q</span><span class="p">))</span>        <span class="c1"># [0.        0.        1.5707964]</span>
 <a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="nb">print</span><span class="p">(</span><span class="n">rc</span><span class="o">.</span><span class="n">matrix_to_rotation_6d</span><span class="p">(</span><span class="n">R</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>     <span class="c1"># (6,)</span>
 </code></pre></div>
@@ -2160,6 +2160,13 @@ of quaternions whose real part is negative, so <code>q</code> and <code>-q</code
 <code>standardize_quaternion</code>.</p>
 <p><code>axis_angle_to_matrix</code> and <code>matrix_to_axis_angle</code> take a <code>fast</code> flag, as in PyTorch3D.
 The default, <code>fast=False</code>, goes through quaternions.</p>
+<p><code>matrix_to_euler_angles</code> handles gimbal lock like scipy: when the central angle makes
+the first and third axes coincide, the third angle is set to <code>0</code> and the first angle
+carries the whole rotation, so the angles always rebuild the input matrix.
+<code>quaternion_to_axis_angle</code> accepts quaternions with a negative real part (<code>q</code> and <code>-q</code>
+are the same rotation) and returns an angle in <code>[0, pi]</code>.</p>
+<p><code>random_quaternions(rng, n)</code>, <code>random_rotations(rng, n)</code> and <code>random_rotation(rng)</code>
+follow the random-number convention and return <code>(rng, result)</code>.</p>
 <h2 id="generic-use">Generic use<a class="headerlink" href="#generic-use" title="Permanent link">&para;</a></h2>
 <p>Inside your own backend-agnostic function, call the <code>base</code> module with the backend:</p>
 <div class="language-python highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">xbarray</span><span class="w"> </span><span class="kn">import</span> <span class="n">ComputeBackend</span>

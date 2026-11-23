@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://unienvorg.github.io/XBArray/0.0.1a20/concepts/random/">
+        <link rel="canonical" href="https://unienvorg.github.io/XBArray/1.0.0/concepts/random/">
       
       
         <link rel="prev" href="../interop/">
@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../../unienv/favicon.svg">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.1">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.8.2">
     
     
       
@@ -2002,18 +2002,19 @@ generator type:</p>
 </tbody>
 </table>
 <p>On PyTorch the generator belongs to a device. To draw on a GPU, create the generator
-with <code>device="cuda"</code> and pass the same <code>device=</code> to the draws.</p>
+with <code>device="cuda"</code>; draws without <code>device=</code> then happen on the generator's device.
+On JAX, <code>device=</code> places the key on that device.</p>
 <div class="admonition note">
 <p class="admonition-title">Pass a seed</p>
-<p><code>seed=None</code> behaves differently on each backend:</p>
+<p><code>seed=None</code> gives a different stream for every new generator, but the seed comes
+from a different place on each backend:</p>
 <ul>
 <li>NumPy seeds from fresh OS entropy.</li>
-<li>PyTorch does not seed the new <code>torch.Generator</code>, so it starts from PyTorch's
-  fixed default seed. Every unseeded generator produces the same numbers.</li>
-<li>JAX picks a seed with <code>numpy.random.randint(65535)</code>. It depends on NumPy's
-  global random state and has only 65535 possible values.</li>
+<li>PyTorch seeds from fresh entropy (<code>torch.Generator.seed()</code>).</li>
+<li>JAX draws a 32-bit seed from NumPy's global random state, so
+  <code>numpy.random.seed(...)</code> makes it reproducible.</li>
 </ul>
-<p>Pass an explicit seed when you need reproducible or independent streams.</p>
+<p>Pass an explicit seed when you need reproducible streams.</p>
 </div>
 <h2 id="drawing-numbers">Drawing numbers<a class="headerlink" href="#drawing-numbers" title="Permanent link">&para;</a></h2>
 <p>Every draw takes the generator as the keyword <code>rng=</code> and returns a pair
@@ -2093,11 +2094,6 @@ Every function also accepts <code>dtype=</code> and <code>device=</code>.</p>
 </tr>
 </tbody>
 </table>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p><code>random_permutation</code> currently raises <code>TypeError</code> on the JAX backend: it passes a
-<code>dtype=</code> argument that <code>jax.random.permutation</code> does not accept.</p>
-</div>
 <h3 id="dtypes-of-the-results">Dtypes of the results<a class="headerlink" href="#dtypes-of-the-results" title="Permanent link">&para;</a></h3>
 <p>Without <code>dtype=</code>, each library picks its own default. Pass <code>dtype=</code> when the dtype
 matters:</p>
@@ -2126,11 +2122,21 @@ matters:</p>
 <tr>
 <td><code>random_geometric</code></td>
 <td><code>int64</code></td>
-<td><code>float32</code></td>
+<td><code>int64</code></td>
+<td><code>int32</code></td>
+</tr>
+<tr>
+<td><code>random_permutation</code></td>
+<td><code>int64</code></td>
+<td><code>int64</code></td>
 <td><code>int32</code></td>
 </tr>
 </tbody>
 </table>
+<p>Floating and boolean <code>dtype=</code> are accepted by <code>random_discrete_uniform</code> and
+<code>random_geometric</code> on every backend: the integers are drawn, then cast.
+<code>random_uniform</code> keeps results strictly below <code>high</code>, also when rounding to a
+low-precision dtype would otherwise produce <code>high</code>.</p>
 <p>With an integer <code>dtype=</code>, <code>random_discrete_uniform</code> raises an error if the bounds do
 not fit the dtype: <code>ValueError</code> on NumPy, <code>RuntimeError</code> on PyTorch. Asking for the
 whole range of a dtype, for example <code>[0, 256)</code> for <code>uint8</code> images, is supported and
