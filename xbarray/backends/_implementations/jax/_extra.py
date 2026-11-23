@@ -62,6 +62,8 @@ def from_numpy(
     dtype : Optional[DTYPE_TYPE] = None,
     device : Optional[DEVICE_TYPE] = None
 ) -> ARRAY_TYPE:
+    if isinstance(data, np.ndarray) and not data.dtype.isnative:
+        data = data.astype(data.dtype.newbyteorder("="))  # JAX rejects non-native byte orders
     return jax.numpy.asarray(data, dtype=dtype, device=device)
 
 def from_other_backend(
@@ -69,12 +71,19 @@ def from_other_backend(
     data: Any,
     /,
 ) -> ARRAY_TYPE:
-    data_dlpack = other_backend.to_dlpack(data)
-    return jax.dlpack.from_dlpack(data_dlpack)
-    # except Exception as e:
-    #     # jax sometimes has tiling issues with dlpack converted data
-    #     np = other_backend.to_numpy(data)
-    #     return from_numpy(np)
+    if other_backend.simplified_name == "jax":
+        return data
+    device_str = other_backend.serialize_device(other_backend.device(data))
+    if device_str is None or device_str.startswith("cpu"):
+        # Host data goes to JAX's default device (as `from_numpy` does) instead of staying
+        # committed to the CPU, and is copied: a JAX array must not change when the source does
+        return from_numpy(other_backend.to_numpy(data))
+    # Import a private copy made by the source library (on its own stream, so it is ordered
+    # before any later in-place write there): JAX arrays are immutable and must not alias a
+    # buffer the other library may modify. The copy is also compact, which JAX's DLPack
+    # import requires (it rejects e.g. tensors sliced with a step or broadcast).
+    private_copy = other_backend.asarray(data, copy=True)
+    return jax.dlpack.from_dlpack(other_backend.to_dlpack(private_copy))
 
 def to_numpy(
     data : ARRAY_TYPE

@@ -4,13 +4,16 @@ import torch
 from ._typing import ARRAY_TYPE, DTYPE_TYPE, DEVICE_TYPE, RNG_TYPE
 from xbarray.backends.base import ComputeBackend, SupportsDLPack
 
+# Dtypes with little operator support in PyTorch, widened to a dtype that holds every value
+# (uint64 -> int64 is checked for overflow in `from_numpy`)
 PYTORCH_DTYPE_CAST_MAP = {
-    torch.uint16: torch.int16,
-    torch.uint32: torch.int32,
+    torch.uint16: torch.int32,
+    torch.uint32: torch.int64,
     torch.uint64: torch.int64,
     torch.float8_e4m3fn: torch.float16,
     torch.float8_e5m2: torch.float16,
 }
+_UNSIGNED_DTYPES = tuple(getattr(torch, name) for name in ("uint16", "uint32", "uint64") if hasattr(torch, name))
 
 __all__ = [
     "default_integer_dtype",
@@ -66,6 +69,12 @@ def from_numpy(
     dtype : Optional[DTYPE_TYPE] = None,
     device : Optional[DEVICE_TYPE] = None
 ) -> ARRAY_TYPE:
+    data = np.asarray(data)  # numpy scalars
+    if any(stride < 0 for stride in data.strides) or not data.dtype.isnative:
+        # torch.from_numpy rejects negative strides and non-native byte orders
+        data = np.ascontiguousarray(data, dtype=data.dtype.newbyteorder("="))
+    if dtype is None and data.dtype == np.uint64 and data.size > 0 and int(data.max()) > np.iinfo(np.int64).max:
+        raise OverflowError("uint64 values above the int64 range cannot be converted to a PyTorch int64 tensor; pass dtype= explicitly")
     t = torch.from_numpy(data)
     target_dtype = dtype if dtype is not None else PYTORCH_DTYPE_CAST_MAP.get(t.dtype, t.dtype)
     if target_dtype is not None or device is not None:
@@ -77,12 +86,22 @@ def from_other_backend(
     data: Any,
     /,
 ) -> ARRAY_TYPE:
+    if other_backend.simplified_name == "numpy":
+        # Handles numpy scalars, negative strides and byte order, which DLPack does not
+        return from_numpy(data)
     dat_dlpack = other_backend.to_dlpack(data)
-    return torch.from_dlpack(dat_dlpack)
+    t = torch.from_dlpack(dat_dlpack)
+    if other_backend.simplified_name == "jax":
+        # JAX arrays are immutable: an in-place write to a tensor sharing their buffer would
+        # silently change the JAX array, so the tensor gets its own copy
+        t = t.clone()
+    return t
 
 def to_numpy(
     data : ARRAY_TYPE
 ) -> np.ndarray:
+    # Tensors that require grad, or have the conjugate / negative bit set, cannot call .numpy() directly
+    data = data.detach().resolve_conj().resolve_neg()
     # Torch bfloat16 is not supported by numpy
     if data.dtype == torch.bfloat16:
         data = data.to(torch.float32)
@@ -92,7 +111,8 @@ def to_dlpack(
     data: ARRAY_TYPE,
     /,
 ) -> SupportsDLPack:
-    return data
+    # DLPack refuses tensors that require grad
+    return data.detach()
 
 def dtype_is_real_integer(
     dtype: DTYPE_TYPE
@@ -102,7 +122,8 @@ def dtype_is_real_integer(
         torch.int8, torch.int16, torch.int32, torch.int64,
         torch.uint8, 
         torch.int,
-        torch.long
+        torch.long,
+        *_UNSIGNED_DTYPES,
     ]
 
 def dtype_is_real_floating(

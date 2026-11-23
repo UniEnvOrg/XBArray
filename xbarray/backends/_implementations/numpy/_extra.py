@@ -46,7 +46,8 @@ def from_numpy(
     dtype : Optional[DTYPE_TYPE] = None,
     device : Optional[DEVICE_TYPE] = None
 ) -> ARRAY_TYPE:
-    return data
+    # No copy when the dtype already matches (the input itself is returned)
+    return np.asarray(data, dtype=dtype)
 
 def from_other_backend(
     other_backend: ComputeBackend,
